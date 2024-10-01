@@ -707,10 +707,16 @@ sort_by_date() {
 
 # Logw patterns
 grep_patterns="Too many open files|marked as crashed|Table corruption|Database page corruption|errno: 145|SYN flooding|emerg|error|temperature|[^e]fault|fail[^2]|i/o.*(error|fail|fault)|ata.*FREEZE|ata.*LOCK|ata3.*hard resetting link|EXT4-fs error|Input/output error|memory corruption|Remounting filesystem read-only|Corrupted data|Buffer I/O error|XFS.{1,20}Corruption|Superblock last mount time is in the future|degraded array|array is degraded|disk failure|Failed to write to block|failed to read/write block|slab corruption|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:"
-exclude_patterns="xrdp_(sec|rdp|process|iso)_"
+exclude_patterns="xrdp_(sec|rdp|process|iso)_|plasmashell\[.*wayland|chrom.*Fontconfig error|plasmashell\[.*Image: Error decoding|Playing audio notification failed|systemd\[.*plasma-.*\.service|uvcvideo.*: Failed to|kioworker\[.*: kf.kio.core|(plasmashell|wayland)\[.*TypeError:|org_kde_powerdevil.*org\.kde\.powerdevil|Failed to set global shortcut|wayland_wrapper\[.*not fatal|RAS: Correctable Errors collector initialized|spectacle\[.*display"
 
 strip_timestamp() {
     sed -E '
+        # Search: systemd-modules-load[402]: Failed to find module
+        s/^.*(systemd-modules-load\[[0-9]{1,9}\]: Failed to find module).*/\1/
+        # Search: for [^ ]+: Invalid Parameters
+        s/^.*(for [^ ]+: Invalid Parameters).*/\1/
+        # Search: HANDLING IBECC MEMORY ERROR
+        s/^.*HANDLING IBECC MEMORY ERROR.*/HANDLING IBECC MEMORY ERROR/
         # Search: (nginx) 2024/09/25 22:44:20 [emerg] 392703#392703: unknown directive "testfail" in /etc/nginx/nginx.conf:31
         s/^[0-9]{4}\/[0-9]{2}\/[0-9]{2}[ \t]{1,12}[0-9]{2}:[0-9]{2}:[0-9]{2}[ \t]{1,12}[^:]{1,32}://
         # Search: Possible SYN flooding on port
@@ -737,6 +743,8 @@ strip_timestamp() {
         s/^\s*\[[A-Za-z]{3}\s*[A-Za-z]{3}\s*[0-9]{1,2}\s*[0-9]{2}:[0-9]{2}:[0-9]{2}\s*[0-9]{4}\s*\]//
         # Search: *asm_exc_page_fault+0x1e/0x30
         s/^.+\[[\s*[0-9]+\.[0-9]+\].+[a-z]{1,32}(_fault\+[0-9]?x)[^$]{1,}$/\1/
+        # Search: Network service crashed, restarting service
+        s/^.+([ \t][^ \t]{1,128} service crashed, restarting service.+)$/\1/
         # Search: [1527399.492467]
         s/^\s*\[\s*[0-9]+\.[0-9]+\] //
     '
@@ -769,7 +777,7 @@ analyze_log() {
         if [[ -f "$log_file" ]]; then  # Check file exist
             echo -e "\n${bg_bright_black}\033[38;5;253mAnalyzing ${log_name}:${NC}"
             if [[ -n $filter_command ]]; then
-                eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | head -30 | while IFS= read -r line; do
+                eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
                     echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
@@ -777,7 +785,7 @@ analyze_log() {
                     printf "%b\n" "${output}"
                 done
             else
-                $log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | head -30 | while IFS= read -r line; do
+                $log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
                     echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
@@ -792,7 +800,7 @@ analyze_log() {
         if type $command > /dev/null 2>&1; then #check command available
             echo -e "\n${bg_bright_black}\033[38;5;253mAnalyzing ${log_name}:${NC}"
             if [[ -n $filter_command ]]; then
-                eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | head -30 | while IFS= read -r line; do
+                eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
                     echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
@@ -800,7 +808,7 @@ analyze_log() {
                     printf "%b\n" "${output}"
                 done
             else
-                $log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | head -30 | while IFS= read -r line; do
+                $log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
                     echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
