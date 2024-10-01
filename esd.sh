@@ -215,27 +215,30 @@ check_mdstat() {
     if [[ ! -e /proc/mdstat ]]; then
         return
     fi
-
+    if ! type mdadm &> /dev/null; then
+        echo -e "${DARK_YELLOW}/proc/mdstat exists, but mdadm is not available${NC}"
+        return
+    fi
     mdstat_content=$(cat /proc/mdstat)
 
-    if [[ -z "$mdstat_content" ]]; then
+    if ls /dev/md[0-9]* 1> /dev/null 2>&1; then
+        for raid in /dev/md[0-9]*; do
+            raid_data=$(mdadm --detail "${raid}")
+            raid_level=$(echo "${raid_data}" | grep -i level | awk -F ':' '{print $2}' | xargs )
+            if [[ "${raid_level}" == "raid0" ]]; then
+                echo -e "${DARK_YELLOW}/proc/mdstat - RAID-0 detected${NC}"
+            fi
+        done
+    else
         echo -e "${DARK_YELLOW}/proc/mdstat exists, but no RAID arrays found${NC}"
-        return
     fi
-
-    if echo "$mdstat_content" | grep -qiE "repair|rebuilding|recovery|active"; then
-        abnormal_status=$(echo "$mdstat_content" | grep -iE "repair|rebuilding|recovery|active" | awk '{print $NF}' | sort | uniq | tr '\n' ' ')
-        echo -e "${DARK_YELLOW}/proc/mdstat - $abnormal_status${NC}"
-        return
-    fi
-
-    if echo "$mdstat_content" | grep -qi "degraded"; then
+    if echo "$mdstat_content" | grep -qiE "\[[^\]]*_[^\[]*\]"; then
         echo -e "${LIGHT_RED}/proc/mdstat - DEGRADED${NC}"
         return
     fi
-
-    if echo "$mdstat_content" | grep -qi "raid0"; then
-        echo -e "${DARK_YELLOW}/proc/mdstat - RAID-0 detected${NC}"
+    if echo "$mdstat_content" | grep -qiE "repair|rebuilding|recovery"; then
+        abnormal_status=$(echo "$mdstat_content" | grep -iE "repair|rebuilding|recovery" | awk '{print $NF}' | sort | uniq | tr '\n' ' ')
+        echo -e "${DARK_YELLOW}/proc/mdstat - $abnormal_status${NC}"
         return
     fi
 
