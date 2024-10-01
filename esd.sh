@@ -291,8 +291,8 @@ check_disks_and_controllers() {
 
             if [[ -n "$hours_column" ]]; then
                 hours_line=$(echo "$smart_output" | awk -v hours_col="$hours_column" '
-                /^\s*[#]?\s*[0-1]?\s+(Extended|Short)/ { print $0; exit }
-                /^\s*1\s+(Extended|Short)/ && !found { found = 1; print $0 }
+                /^\s*[#]?\s*[0-1]?\s+(Extended|Offline|Short).{1,128}(Completed|progress).{1,128}[0-9]{1,10}/ { print $0; exit }
+                /^\s*1\s+(Extended|Offline|Short).{1,128}(Completed|progress).{1,128}[0-9]{1,10}/ && !found { found = 1; print $0 }
                 ')
                 hours_value=$(echo "$hours_line" | sed 's/^[ \t]*//' | awk -v col="$hours_column" 'BEGIN {FS = "([ \t]{2,}|[\t]+)"} {print $col}')
             fi
