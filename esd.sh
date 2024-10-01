@@ -569,7 +569,7 @@ check_disk_load() {
     atop_rows=$(echo "$atop_output" | wc -l)
 
     if [[ -z "$atop_output" ]]; then
-        echo "Unexpected atop format."
+        echo "Unexpected atop format - root priv required."
         return
     fi
 

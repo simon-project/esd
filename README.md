@@ -9,7 +9,7 @@
 
 ## Использование:
 ```
-curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q 5ce6527af644db0a40ea734101da8b71 && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
+curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q e1d310d82c6204833f4ede1164115146 && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
 ```
 
 ### English
@@ -24,6 +24,6 @@ curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-pro
 ## Usage:
 
 ```
-curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q 5ce6527af644db0a40ea734101da8b71 && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
+curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q e1d310d82c6204833f4ede1164115146 && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
 ```
 
