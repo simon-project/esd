@@ -521,6 +521,7 @@ fi
 echo -e "\n\033[38;5;109m\033[3m Remember - this application doesn't replace your \n brain and knowledge, it only saves your time.\033[0m"
 
 # TOP Ratings
+# Cooldown before make CPU rating
 for i in {16..51}; do echo -ne "\033[38;5;${i}m.\\033[0m"; sleep 0.1; done
 echo -e "\nMy PID is: $BASHPID"
 echo -e "\n${bg_bright_black}\033[38;5;253mTOP 5 processess by \033[38;5;43mCPU usage:${NC}"
