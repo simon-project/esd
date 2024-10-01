@@ -297,13 +297,13 @@ check_disks_and_controllers() {
                 hours_value=$(echo "$hours_line" | sed 's/^[ \t]*//' | awk -v col="$hours_column" 'BEGIN {FS = "([ \t]{2,}|[\t]+)"} {print $col}')
             fi
 
-            errors=$(echo "${smart_output}" | grep -iE 'SMART overall-health self-assessment test result:\s{1,10}FAILED|Completed:\s{1,10}read failure|error|fail|critical|SMART overall-health self-assessment test result: FAILED' | grep -viE 'Completed without error|Power_on_Hours\s+Failing_LBA|Critical.*:|Error.*:|Media.*Errors:|No Errors Logged|Error Information\s*\(.*\)')
+            errors=$(echo "${smart_output}" | grep -iE 'SMART overall-health self-assessment test result:\s{1,10}FAILED|Completed:\s{1,10}read failure|[^_\-]error|[^_\-]fail|critical|SMART overall-health self-assessment test result: FAILED' | grep -viE 'without error|Power_on_Hours\s+Failing_LBA|Critical.*:|Error.*:|Media.*Errors:|No Errors Logged|Error Information\s*\(.*\)|SMART Error Log not supported')
             serial=$(echo "$smart_output" | grep -i 'serial number' | sort -u | awk -F: '{print $2}' | sed 's/[^[:digit:]]//g')
             Percentage_Used=$(echo "$smart_output" | grep -i 'Percentage Used' | sort -u | awk -F: '{print $2}' | sed 's/[^[:digit:]]//g')
             altPower_On_Hours=$(echo "$smart_output" | grep -i 'Power On Hours' | sort | uniq | awk -F: '{print $2}' | sed 's/[^[:digit:]]//g')
 
             Reallocated_Sector_Ct=$(echo "$smart_output" | grep -i 'Reallocated_Sector_Ct' | sort -u |awk '{print $(NF)}' | sed 's/[^[:digit:]]//g')
-            Power_On_Hours=$(echo "$smart_output" | grep -i 'Power_On_Hours' | sort | uniq |awk '{print $(NF)}' | sed 's/[^[:digit:]]//g')
+            Power_On_Hours=$(echo "$smart_output" | grep -i 'Power_On_Hours' | sort | uniq | awk '{print $(NF)}' | sed 's/[^[:digit:]h].*//g')
             Offline_Uncorrectable=$(echo "$smart_output" | grep -i 'Offline_Uncorrectable' | sort -u |awk '{print $(NF)}' | sed 's/[^[:digit:]]//g')
             Current_Pending_Sector=$(echo "$smart_output" | grep -i 'Current_Pending_Sector' | sort -u |awk '{print $(NF)}' | sed 's/[^[:digit:]]//g')
             Offline_Uncorrectable=$(echo "$smart_output" | grep -i 'Offline_Uncorrectable' | sort -u |awk '{print $(NF)}' | sed 's/[^[:digit:]]//g')
