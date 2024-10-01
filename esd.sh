@@ -17,7 +17,7 @@ YELLOW='\033[1;33m'
 DARK_YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
-bg_bright_black='\033[1;37m\033[0;100m'
+bg_bright_black='\033[48;5;237m'
 bg_green='\033[0;97m\033[42m'
 bg_blue='\033[44m'
 bg_cyan='\033[1;37m\033[46m'
@@ -28,6 +28,41 @@ if [[ "${LNS}" =~ ^[0-9]+$ ]]; then
     tail_depth="${LNS}"
 else
     tail_depth="10000"
+fi
+
+# No bc
+if ! type bc &>/dev/null; then
+    bc() {
+        local input="$1"
+        local num1=$(echo "$input" | awk '{print $1}')
+        local operator=$(echo "$input" | awk '{print $2}')
+        local num2=$(echo "$input" | awk '{print $3}')
+        local int_part1=${num1%%.*}
+        local int_part2=${num2%%.*}
+        case "$operator" in
+            ">")
+                [[ $int_part1 -gt $int_part2 ]] && echo 1 || echo 0
+                ;;
+            "<")
+                [[ $int_part1 -lt $int_part2 ]] && echo 1 || echo 0
+                ;;
+            "==")
+                [[ $int_part1 -eq $int_part2 ]] && echo 1 || echo 0
+                ;;
+            ">=")
+                [[ $int_part1 -ge $int_part2 ]] && echo 1 || echo 0
+                ;;
+            "<=")
+                [[ $int_part1 -le $int_part2 ]] && echo 1 || echo 0
+                ;;
+            "!=")
+                [[ $int_part1 -ne $int_part2 ]] && echo 1 || echo 0
+                ;;
+            *)
+                echo "0"
+                ;;
+        esac
+    }
 fi
 
 # Detect OS
@@ -256,7 +291,7 @@ check_disks_and_controllers() {
 
             if [[ -n "$hours_column" ]]; then
                 hours_line=$(echo "$smart_output" | awk -v hours_col="$hours_column" '
-                /^\s*0\s+(Extended|Short)/ { print $0; exit }
+                /^\s*[#]?\s*[0-1]?\s+(Extended|Short)/ { print $0; exit }
                 /^\s*1\s+(Extended|Short)/ && !found { found = 1; print $0 }
                 ')
                 hours_value=$(echo "$hours_line" | sed 's/^[ \t]*//' | awk -v col="$hours_column" 'BEGIN {FS = "([ \t]{2,}|[\t]+)"} {print $col}')
