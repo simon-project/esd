@@ -786,9 +786,3 @@ analyze_log "httpd error.log" "tail -${tail_depth} /var/log/httpd/error.log"
 analyze_log "httpd error_log" "tail -${tail_depth} /var/log/apache2/error_log"
 analyze_log "nginx error.log" "tail -${tail_depth} /var/log/nginx/error.log" "grep -v '13: Permission denied'"
 echo ""
-
-
-
-
-
-
