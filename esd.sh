@@ -116,9 +116,9 @@ if ! echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
 fi
 
 if echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then 
-    echo -e "This server IPv4 address is [${rip}]";
+    echo -e "This server IPv4 address is [\033[38;5;51m${rip}${NC}]\n";
 else
-    echo -e "Unable to get remote IPv4-addr of this server via HTTP request to https://ifconfig.me\n - may be network or another problem or no curl/wget installed. [${rip}]";
+    echo -e "Unable to get remote IPv4-addr of this server via HTTP request to https://ifconfig.me\n - may be network or another problem or no curl/wget installed. [\033[38;5;68m${rip}${NC}]\n";
 fi
 
 detect_panel() {
@@ -353,7 +353,15 @@ check_disks_and_controllers() {
                 PoH="${Power_On_Hours}"
             fi
             if [[ -n "${PoH}" ]]; then
-                hdelay=$((PoH - hours_value))
+                PoH2="${PoH}"
+                if [[ "${PoH}" -gt 65535 ]]; then
+                    PoH2=$((PoH % 65535))
+                fi
+                if [[ "${PoH2}" -ge "${hours_value}" ]]; then
+                    hdelay=$((PoH2 - hours_value))
+                else
+                    hdelay=$((PoH - hours_value))
+                fi
                 if [[ "${hdelay}" -gt "168" ]]; then
                     errors=$(echo -e "${RED}No disk monitoring?${NC} The last ${WHITE}$disk${NC} smartctl tests were run ${RED}${hdelay}${NC} hours ago!\n${errors}")
                 fi
@@ -528,11 +536,11 @@ fi
 
 # Failed services
 if type systemctl >/dev/null 2>&1; then
-    failed_list=$(systemctl list-units --state=failed)
+    failed_list=$(systemctl list-units --state=failed | grep -vE 'LOAD[ \t]{1,12}=[ \t]{1,12}Reflects|ACTIVE[ \t]{1,12}=[ \t]{1,12}The[ \t]{1,12}high|SUB[ \t]{1,12}=[ \t]{1,12}The[ \t]{1,12}low')
     if [[ $(echo "${failed_list}" | grep -E '0[ \t]+loaded units listed' | wc -l) -ne "1" ]]; then
         echo "${failed_list}" | grep -v 'UNIT' | wc -l
         echo -e "Failed systemd services \t${RED}[FOUND]${NC}"
-        echo "${failed_list}"
+        echo -e "\033[38;5;88m${failed_list}${NC}\n"
     else
            echo -e "Failed systemd services \t${GREEN}[OK]${NC}"
     fi
@@ -546,7 +554,7 @@ if type nginx >/dev/null 2>&1; then
     nginx_status=$(echo "${nginx_test}" |grep -i 'test failed' | wc -l)
     if [[ "${nginx_status}" -ne "0" ]]; then
         echo -e "Nginx test \t\t\t${RED}[FAILED]${NC}"
-        echo "${nginx_test}"
+        echo -e "${nginx_test}\n"
     else
         echo -e "Nginx test \t\t\t${GREEN}[OK]${NC}"
     fi 
@@ -558,7 +566,7 @@ if type apache2ctl >/dev/null 2>&1; then
     apache2_status=$(echo "${apache2_test}" |grep -i 'Syntax OK' | wc -l)
     if [[ "${apache2_status}" -lt "1" ]]; then
         echo -e "Apache2 check \t\t\t${RED}[FAILED]${NC}"
-        echo "${apache2_test}"
+        echo -e "${apache2_test}\n"
     else
         echo -e "Apache2 test \t\t\t${GREEN}[OK]${NC}"
     fi
@@ -567,7 +575,7 @@ elif type apachectl >/dev/null 2>&1; then
     apache_status=$(echo "${apache_test}" |grep -i 'Syntax OK' | wc -l)
     if [[ "${apache_status}" -lt "1" ]]; then
         echo -e "Apache check \t\t\t${RED}[FAILED]${NC}"
-        echo "${apache_test}"
+        echo -e "${apache_test}\n"
     else
         echo -e "Apache test \t\t\t${GREEN}[OK]${NC}"
     fi
@@ -757,6 +765,7 @@ exclude_patterns="error log file re-opened|xrdp_(sec|rdp|process|iso)_|plasmashe
 
 strip_log() {
     sed -E '
+        s/^.+(pci[ \t]{1,7}.+:).+\[.+\]:.+failed to assign.*/\1/
         s/^.+(mysql\.service:[ \t]{1,7}Failed[ \t]{1,7}with[ \t]{1,7}result[ \t]{1,7}.+)/\1/
         s/^.+(mysql.service:[ \t]{1,7}Unit[ \t]{1,7}entered[ \t]{1,7}failed[ \t]{1,7}state).+/\1/
         s/^.+(systemd\[[0-9]{1,9}\]:[ \t]{1,7}Failed[ \t]{1,7}to[ \t]{1,7}start[ \t]{1,7}.+)/\1/
@@ -851,16 +860,42 @@ analyze_log() {
             if [[ -n $filter_command ]]; then
                 eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
+                    cntcolor="${DARK_YELLOW}";
+                    if [[ "${logcnt}" -ge "3" ]]; then
+                        cntcolor='\033[38;5;172m';
+                    fi
+                    if [[ "${logcnt}" -ge "10" ]]; then
+                        cntcolor='\033[38;5;166m';
+                    fi
+                    if [[ "${logcnt}" -ge "20" ]]; then
+                        cntcolor='\033[38;5;161m';
+                    fi
+                    if [[ "${logcnt}" -ge "50" ]]; then
+                        cntcolor='\033[38;5;160m';
+                    fi
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
-                    echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
+                    echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
                 done
             else
                 $log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
+                    cntcolor="${DARK_YELLOW}";
+                    if [[ "${logcnt}" -ge "3" ]]; then
+                        cntcolor='\033[38;5;172m';
+                    fi
+                    if [[ "${logcnt}" -ge "10" ]]; then
+                        cntcolor='\033[38;5;166m';
+                    fi
+                    if [[ "${logcnt}" -ge "20" ]]; then
+                        cntcolor='\033[38;5;161m';
+                    fi
+                    if [[ "${logcnt}" -ge "50" ]]; then
+                        cntcolor='\033[38;5;160m';
+                    fi
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
-                    echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
+                    echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
                 done
@@ -874,16 +909,42 @@ analyze_log() {
             if [[ -n $filter_command ]]; then
                 eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
+                    cntcolor="${DARK_YELLOW}";
+                    if [[ "${logcnt}" -ge "3" ]]; then
+                        cntcolor='\033[38;5;172m';
+                    fi
+                    if [[ "${logcnt}" -ge "10" ]]; then
+                        cntcolor='\033[38;5;166m';
+                    fi
+                    if [[ "${logcnt}" -ge "20" ]]; then
+                        cntcolor='\033[38;5;161m';
+                    fi
+                    if [[ "${logcnt}" -ge "50" ]]; then
+                        cntcolor='\033[38;5;160m';
+                    fi
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
-                    echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
+                    echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
                 done
             else
                 $log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
+                    cntcolor="${DARK_YELLOW}";
+                    if [[ "${logcnt}" -ge "3" ]]; then
+                        cntcolor='\033[38;5;172m';
+                    fi
+                    if [[ "${logcnt}" -ge "10" ]]; then
+                        cntcolor='\033[38;5;166m';
+                    fi
+                    if [[ "${logcnt}" -ge "20" ]]; then
+                        cntcolor='\033[38;5;161m';
+                    fi
+                    if [[ "${logcnt}" -ge "50" ]]; then
+                        cntcolor='\033[38;5;160m';
+                    fi
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
-                    echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
+                    echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     #if [[ "${output}" == "" ]]; then
                     #    echo "${line}"
@@ -912,6 +973,8 @@ analyze_log "httpd error_log" "tail -${tail_depth} /var/log/httpd/error_log"
 analyze_log "nginx error.log" "tail -${tail_depth} /var/log/nginx/error.log" "grep -v '13: Permission denied'"
 analyze_log "nginx error.log" "tail -${tail_depth} /var/log/nginx/error_log" "grep -v '13: Permission denied'"
 analyze_log "daemon.log" "tail -${tail_small_depth} /var/log/daemon.log"
+analyze_log "FASTPANEL fast.log" "tail -${tail_small_depth} /var/log/fastpanel2/fast.log"
+analyze_log "FASTPANEL backup.log" "tail -${tail_small_depth} /var/log/fastpanel2/backup.log"
 
 for tl in /var/log/php*fpm.log; do 
     analyze_log "${tl##*/}" "tail -${tail_small_depth} ${tl}"
