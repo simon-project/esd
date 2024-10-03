@@ -75,25 +75,25 @@ fi
 
 # OS colours
 if [[ "$os_name" == *"Debian"* ]]; then
-    if (( os_version <= 9 )); then
+    if echo "$os_version <= 9" | bc -l | grep -q 1; then
         os_color="${bg_bright_black}"  # Old Debian
-    elif (( os_version == 10 )); then
+    elif echo "$os_version == 10" | bc -l | grep -q 1; then
         os_color="${bg_blue}"  # Not new Debian
     else
         os_color="${bg_green}"  # Good Debian
     fi
 elif [[ "$os_name" == *"Ubuntu"* ]]; then
-    if (( os_version <= 18 )); then
+    if echo "$os_version <= 18" | bc -l | grep -q 1; then
         os_color="${bg_bright_black}"  # Old Ubuntu
-    elif (( os_version == 20 )); then
+    elif echo "$os_version == 20" | bc -l | grep -q 1; then
         os_color="${bg_blue}"  # Not new Ubuntu
     else
-        os_color="{bg_green}"  # Good Ubuntu
+        os_color="${bg_green}"  # Good Ubuntu
     fi
 elif [[ "$os_name" == *"CentOS"* ]]; then
-    if (( os_version <= 7 )); then
+    if echo "$os_version <= 7" | bc -l | grep -q 1; then
         os_color="${DARK_GRAY}"  # Old CentOS
-    elif (( os_version == 8 )); then
+    elif echo "$os_version == 8" | bc -l | grep -q 1; then
         os_color="${CYAN}"  # Not new CentOS
     else
         os_color="${WHITE}"  # Good, but not good, because CentOS
@@ -101,14 +101,13 @@ elif [[ "$os_name" == *"CentOS"* ]]; then
 else
     os_color="${bg_cyan}"  # Other OS
 fi
+
 #because uptime -p is not available on some OS
 uptimep=$(uptime | sed -E 's/^.+up[ \t]{1,7}([0-9]+)[ \t]{1,7}([^ \t]{2,12})[ \t]{1,7}([0-9]{1,2}):([0-9]{1,2}).+/up \1 \2 \3 hours \4 minutes/; s/^.+up[ \t]{1,7}([0-9]{1,2}):([0-9]{1,2}).+/up \1 hours \2 minutes/')
 echo -e "${os_color}$os_name ${os_version}, ${uptimep}${NC}\n"
 
 if type curl >/dev/null 2>&1; then
     rip=$(curl --insecure -4 -L --max-time 7 --connect-timeout 7 https://ifconfig.me 2>/dev/null)
-elif type wget >/dev/null 2>&1; then
-    rip=$(wget --no-check-certificate --inet4-only --prefer-family=IPv4 --timeout=7 --tries=1 -qO- https://ifconfig.me)
 fi
 if ! echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
     if type wget >/dev/null 2>&1; then
@@ -139,6 +138,8 @@ detect_panel() {
                     # get ip
                     # curl --insecure -4 -L --max-time 7 --connect-timeout 7 https://ifconfig.me
                     #others...
+# bash: line 86: ((: 22.04: syntax error: invalid arithmetic operator (error token is ".04")
+# bash: line 88: ((: 22.04: syntax error: invalid arithmetic operator (error token is ".04")
                     ;;
                 mgr5)
                     echo "Found mgr5"
@@ -751,11 +752,14 @@ sort_by_date() {
 }
 
 # Logw patterns
-grep_patterns="Too many open files|marked as crashed|Table corruption|Database page corruption|errno: 145|SYN flooding|emerg|error|temperature|[^e]fault|fail[^2]|i/o.*(error|fail|fault)|ata.*FREEZE|ata.*LOCK|ata3.*hard resetting link|EXT4-fs error|Input/output error|memory corruption|Remounting filesystem read-only|Corrupted data|Buffer I/O error|XFS.{1,20}Corruption|Superblock last mount time is in the future|degraded array|array is degraded|disk failure|Failed to write to block|failed to read/write block|slab corruption|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:"
+grep_patterns="Cannot allocate memory|Too many open files|marked as crashed|Table corruption|Database page corruption|errno: 145|SYN flooding|emerg|error|temperature|[^e]fault|fail[^2]|i/o.*(error|fail|fault)|ata.*FREEZE|ata.*LOCK|ata3.*hard resetting link|EXT4-fs error|Input/output error|memory corruption|Remounting filesystem read-only|Corrupted data|Buffer I/O error|XFS.{1,20}Corruption|Superblock last mount time is in the future|degraded array|array is degraded|disk failure|Failed to write to block|failed to read/write block|slab corruption|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:"
 exclude_patterns="error log file re-opened|xrdp_(sec|rdp|process|iso)_|plasmashell\[.*wayland|chrom.*Fontconfig error|plasmashell\[.*Image: Error decoding|Playing audio notification failed|systemd\[.*plasma-.*\.service|uvcvideo.*: Failed to|kioworker\[.*: kf.kio.core|(plasmashell|wayland)\[.*TypeError:|org_kde_powerdevil.*org\.kde\.powerdevil|Failed to set global shortcut|wayland_wrapper\[.*not fatal|RAS: Correctable Errors collector initialized|spectacle\[.*display"
 
 strip_log() {
     sed -E '
+        s/^.+(mysql\.service:[ \t]{1,7}Failed[ \t]{1,7}with[ \t]{1,7}result[ \t]{1,7}.+)/\1/
+        s/^.+(mysql.service:[ \t]{1,7}Unit[ \t]{1,7}entered[ \t]{1,7}failed[ \t]{1,7}state).+/\1/
+        s/^.+(systemd\[[0-9]{1,9}\]:[ \t]{1,7}Failed[ \t]{1,7}to[ \t]{1,7}start[ \t]{1,7}.+)/\1/
         s/^.+pci.+:[ \t]{1,7}BAR[ \t]{1,7}[0-9]{1,7}:[ \t]{1,7}(failed[ \t]{1,7}to[ \t]{1,7}assign[ \t]{1,7}\[io[ \t]{1,7}size).+\]/\1/
         s/^.+dovecot:.+Connection[ \t]{1,7}closed:[ \t]{1,7}read.+(failed:[ \t]{1,7}Connection[ \t]{1,7}reset[ \t]{1,7}by[ \t]{1,7}peer).+/\1/
         # [Tue Oct 01 17:36:19 2024] [error] mod_fcgid: process /var/www/zilforum/data/php-bin/php(8505) exit(communication error), get unexpected signal 7
@@ -772,7 +776,8 @@ strip_log() {
         s/^.+(Device:[ \t]{1,7}.+SMART[ \t]{1,7}Usage[ \t]{1,7}Attribute:.+Temperature_Celsius[ \t]{1,7}changed[ \t]{1,7}from).+$/\1/
         # Search: pam_unix(sshd:auth): authentication failure
         s/^.+(pam_unix\([^:]+:auth\):[ \t]{1,7}authentication[ \t]{1,7}failure).+$/\1/
-        # Search: Failed password for invalid user
+        # Search: Failed password for username/invalid user username from
+        s/^.+(Failed[ \t]{1,7}password[ \t]{1,7}for[ \t]{1,7}invalid[ \t]{1,7}user).+$/\1/
         s/^.+(Failed[ \t]{1,7}password[ \t]{1,7}for[ \t]{1,7}.+[ \t]{1,7}from).+$/\1/
         # Search: mod_fcgid: process 1229 graceful kill fail, sending SIGKILL
         s/^.+mod_fcgid:[ \t]{1,7}process[ \t]{1,7}[0-9]{1,12}[ \t]{1,7}(graceful[ \t]{1,7}kill[ \t]{1,7}fail,[ \t]{1,7}sending[ \t]{1,7}.+)$/\1/
@@ -824,7 +829,7 @@ analyze_log() {
     local filter_command=$3
     local super_danger="(i/o\s*(error|fail|fault)|EXT4-fs error|Input/output error|memory corruption)"
     local danger="(Too many open files|Remounting filesystem read-only|Corrupted data|Buffer I/O error|XFS.{1,20}Corruption|Superblock last mount time is in the future|degraded array|array is degraded|disk failure|Failed to write to block|failed to read/write block|slab corruption)"
-    local warn="(marked as crashed|Table corruption|Database page corruption|errno: 145|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:|service: Failed)"
+    local warn="(Cannot allocate memory|marked as crashed|Table corruption|Database page corruption|errno: 145|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:|service: Failed)"
     local regex_trigger="(${grep_patterns})"
 
 
@@ -912,5 +917,5 @@ for tl in /var/log/php*fpm.log; do
     analyze_log "${tl##*/}" "tail -${tail_small_depth} ${tl}"
 done
 
-analyze_log "TESTLOG" "cat /home/xakep/Documents/scripts/supportgitsrv.fv.ee/esd/tests/testlog"
+analyze_log "TESTLOG" "tail -${tail_small_depth} tests/testlog"
 echo ""
