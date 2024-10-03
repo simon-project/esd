@@ -101,9 +101,26 @@ elif [[ "$os_name" == *"CentOS"* ]]; then
 else
     os_color="${bg_cyan}"  # Other OS
 fi
+#because uptime -p is not available on some OS
+uptimep=$(uptime | sed -E 's/^.+up[ \t]{1,7}([0-9]+)[ \t]{1,7}([^ \t]{2,12})[ \t]{1,7}([0-9]{1,2}):([0-9]{1,2}).+/up \1 \2 \3 hours \4 minutes/; s/^.+up[ \t]{1,7}([0-9]{1,2}):([0-9]{1,2}).+/up \1 hours \2 minutes/')
+echo -e "${os_color}$os_name ${os_version}, ${uptimep}${NC}\n"
 
-echo -e "${os_color}$os_name ${os_version}, $(uptime -p)${NC}\n"
+if type curl >/dev/null 2>&1; then
+    rip=$(curl --insecure -4 -L --max-time 7 --connect-timeout 7 https://ifconfig.me 2>/dev/null)
+elif type wget >/dev/null 2>&1; then
+    rip=$(wget --no-check-certificate --inet4-only --prefer-family=IPv4 --timeout=7 --tries=1 -qO- https://ifconfig.me)
+fi
+if ! echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    if type wget >/dev/null 2>&1; then
+        rip=$(wget --no-check-certificate --inet4-only --prefer-family=IPv4 --timeout=7 --tries=1 -qO- https://ifconfig.me)
+    fi
+fi
 
+if echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then 
+    echo -e "This server IPv4 address is [${rip}]";
+else
+    echo -e "Unable to get remote IPv4-addr of this server via HTTP request to https://ifconfig.me\n - may be network or another problem or no curl/wget installed. [${rip}]";
+fi
 
 detect_panel() {
     directories=(fastpanel fastpanel2 mgr5 ispmgr cpanel vesta directadmin)
@@ -118,6 +135,10 @@ detect_panel() {
                     ;;
                 fastpanel2)
                     echo "Found FASTPANEL2"
+                    #TODO login  mogwai
+                    # get ip
+                    # curl --insecure -4 -L --max-time 7 --connect-timeout 7 https://ifconfig.me
+                    #others...
                     ;;
                 mgr5)
                     echo "Found mgr5"
@@ -564,41 +585,65 @@ echo -e "\n\033[38;5;109m\033[3m Remember - this application doesn't replace you
 
 # TOP Ratings
 # Cooldown before make CPU rating
-for i in {16..51}; do echo -ne "\033[38;5;${i}m.\\033[0m"; sleep 0.1; done
+for i in {16..51}; do echo -ne "\033[38;5;${i}m.\\033[0m"; sleep 0.05; done
 echo -e "\nMy PID is: $BASHPID"
 echo -e "\n${bg_bright_black}\033[38;5;253mTOP 5 processess by \033[38;5;43mCPU usage:${NC}"
 ps -eo %cpu,pid,args --sort=-%cpu | grep -v 'ps -eo %cpu,pid,args --sort=-%cpu' | awk 'NR > 1 {
     cmd = "";
     for (i=3; i<=NF; i++) cmd = cmd $i " ";
     if (length(cmd) > 172) cmd = substr(cmd, 1, 169) "...";
-    split(cmd, parts, " ");  # args colours
-    command_name = parts[1];  # cmd name
-    args = "";  # cmd args
-    for (i=2; i<=length(parts); i++) {  # processing args
-        args = args parts[i] " ";
+
+    # Разбор команды и аргументов без использования split
+    cmd_name = "";
+    args = "";
+    first_space = index(cmd, " ");  # ищем первое пространство
+
+    if (first_space > 0) {
+        cmd_name = substr(cmd, 1, first_space - 1);  # команда до первого пробела
+        args = substr(cmd, first_space + 1);  # все остальное - аргументы
+    } else {
+        cmd_name = cmd;  # если нет пробела, то вся строка - команда
     }
+
     if (length(args) > 0) {
-        cmd = command_name " \033[1;30m" substr(args, 1, length(args)-1) "\033[0m";  # add colours
+        args = substr(args, 1, length(args) - 1);  # удаляем последний пробел
+        cmd = cmd_name " \033[1;30m" args "\033[0m";  # добавляем цвет
+    } else {
+        cmd = cmd_name;  # если нет аргументов
     }
+
     printf "%6.2f%%   %d   %s\n", $1, $2, cmd
 }' | head -5
 
-echo -e "\n${bg_bright_black}\033[38;5;253mTOP 5 processess by \033[38;5;178mRAM usage:${NC}"
+
+echo -e "\n${bg_bright_black}\033[38;5;253mTOP 5 processes by \033[38;5;178mRAM usage:${NC}"
 ps -eo %mem,pid,args --sort=-%mem | awk 'NR > 1 {
     cmd = ""; 
     for (i=3; i<=NF; i++) cmd = cmd $i " "; 
     if (length(cmd) > 172) cmd = substr(cmd, 1, 169) "...";
-    split(cmd, parts, " ");  # args colours
-    command_name = parts[1];  # cmd name
-    args = "";  # cmd args
-    for (i=2; i<=length(parts); i++) {  # processing agrs
-        args = args parts[i] " ";
+
+    # Разбор команды и аргументов без использования split
+    cmd_name = "";
+    args = "";
+    first_space = index(cmd, " ");  # ищем первое пространство
+
+    if (first_space > 0) {
+        cmd_name = substr(cmd, 1, first_space - 1);  # команда до первого пробела
+        args = substr(cmd, first_space + 1);  # все остальное - аргументы
+    } else {
+        cmd_name = cmd;  # если нет пробела, то вся строка - команда
     }
+
     if (length(args) > 0) {
-        cmd = command_name " \033[1;30m" substr(args, 1, length(args)-1) "\033[0m";  # add colours
+        args = substr(args, 1, length(args) - 1);  # удаляем последний пробел
+        cmd = cmd_name " \033[1;30m" args "\033[0m";  # добавляем цвет
+    } else {
+        cmd = cmd_name;  # если нет аргументов
     }
+
     printf "%6.2f%%   %d   %s\n", $1, $2, cmd
 }' | head -5
+
 
 check_disk_load() {
     if ! type atop >/dev/null 2>&1; then
@@ -707,10 +752,32 @@ sort_by_date() {
 
 # Logw patterns
 grep_patterns="Too many open files|marked as crashed|Table corruption|Database page corruption|errno: 145|SYN flooding|emerg|error|temperature|[^e]fault|fail[^2]|i/o.*(error|fail|fault)|ata.*FREEZE|ata.*LOCK|ata3.*hard resetting link|EXT4-fs error|Input/output error|memory corruption|Remounting filesystem read-only|Corrupted data|Buffer I/O error|XFS.{1,20}Corruption|Superblock last mount time is in the future|degraded array|array is degraded|disk failure|Failed to write to block|failed to read/write block|slab corruption|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:"
-exclude_patterns="xrdp_(sec|rdp|process|iso)_|plasmashell\[.*wayland|chrom.*Fontconfig error|plasmashell\[.*Image: Error decoding|Playing audio notification failed|systemd\[.*plasma-.*\.service|uvcvideo.*: Failed to|kioworker\[.*: kf.kio.core|(plasmashell|wayland)\[.*TypeError:|org_kde_powerdevil.*org\.kde\.powerdevil|Failed to set global shortcut|wayland_wrapper\[.*not fatal|RAS: Correctable Errors collector initialized|spectacle\[.*display"
+exclude_patterns="error log file re-opened|xrdp_(sec|rdp|process|iso)_|plasmashell\[.*wayland|chrom.*Fontconfig error|plasmashell\[.*Image: Error decoding|Playing audio notification failed|systemd\[.*plasma-.*\.service|uvcvideo.*: Failed to|kioworker\[.*: kf.kio.core|(plasmashell|wayland)\[.*TypeError:|org_kde_powerdevil.*org\.kde\.powerdevil|Failed to set global shortcut|wayland_wrapper\[.*not fatal|RAS: Correctable Errors collector initialized|spectacle\[.*display"
 
-strip_timestamp() {
+strip_log() {
     sed -E '
+        s/^.+pci.+:[ \t]{1,7}BAR[ \t]{1,7}[0-9]{1,7}:[ \t]{1,7}(failed[ \t]{1,7}to[ \t]{1,7}assign[ \t]{1,7}\[io[ \t]{1,7}size).+\]/\1/
+        s/^.+dovecot:.+Connection[ \t]{1,7}closed:[ \t]{1,7}read.+(failed:[ \t]{1,7}Connection[ \t]{1,7}reset[ \t]{1,7}by[ \t]{1,7}peer).+/\1/
+        # [Tue Oct 01 17:36:19 2024] [error] mod_fcgid: process /var/www/zilforum/data/php-bin/php(8505) exit(communication error), get unexpected signal 7
+        s/^.+fcgid:[ \t]{1,7}process.+(exit.+unexpected[ \t]{1,7}signal[ \t]{1,7}[^ \t]{1,12}).*/\1/
+        # [error] 2911#2911: *2853281 open() "/var/www/index.html/blog/wp-includes/wlwmanifest.xml" failed (20: Not a directory)
+        s/^.+\[error\].+open\(\).+(failed[ \t]{1,7}\(20: Not a directory\)).+/\1/
+        # cloud-init[632]: 2024-10-02 19:29:17,593 - url_helper.py[WARNING]
+        s/^.+cloud-init\[.+url_helper\.py\[WARNING\]:.+/url_helper.py[WARNING]:/
+        # [crit] 28029#28029: *30946025 SSL_do_handshake() failed (SSL: error:140944E7:SSL
+        s/^.+\[crit\][ \t]{1,7}.+:[ \t]{1,7}.+(SSL_do_handshake\(\)[ \t]{1,7}failed[ \t]{1,7}\(SSL:[ \t]{1,7}error:.+:SSL).+/\1/
+        # dovecot: pop3-login: Error: Diffie-Hellman key exchange requested, but
+        s/^.+(dovecot:[ \t]{1,7}.+-login:[ \t]{1,7}Error:[ \t]{1,7}Diffie-Hellman[ \t]{1,7}key[ \t]{1,7}exchange[ \t]{1,7}requested,[ \t]{1,7}but).+$/\1/
+        # Search: Device: /dev/sda [SAT], SMART Usage Attribute: 194 Temperature_Celsius changed from 72 to 71
+        s/^.+(Device:[ \t]{1,7}.+SMART[ \t]{1,7}Usage[ \t]{1,7}Attribute:.+Temperature_Celsius[ \t]{1,7}changed[ \t]{1,7}from).+$/\1/
+        # Search: pam_unix(sshd:auth): authentication failure
+        s/^.+(pam_unix\([^:]+:auth\):[ \t]{1,7}authentication[ \t]{1,7}failure).+$/\1/
+        # Search: Failed password for invalid user
+        s/^.+(Failed[ \t]{1,7}password[ \t]{1,7}for[ \t]{1,7}.+[ \t]{1,7}from).+$/\1/
+        # Search: mod_fcgid: process 1229 graceful kill fail, sending SIGKILL
+        s/^.+mod_fcgid:[ \t]{1,7}process[ \t]{1,7}[0-9]{1,12}[ \t]{1,7}(graceful[ \t]{1,7}kill[ \t]{1,7}fail,[ \t]{1,7}sending[ \t]{1,7}.+)$/\1/
+        # Search: *pid 123456
+        s/^.+(:.+, pid )[0-9]+$/\1/
         # Search: systemd-modules-load[402]: Failed to find module
         s/^.*(systemd-modules-load\[[0-9]{1,9}\]: Failed to find module).*/\1/
         # Search: for [^ ]+: Invalid Parameters
@@ -728,17 +795,17 @@ strip_timestamp() {
         # Search: netfilter-persistent[378]: Error occurred at line: 10
         s/^.+netfilter-persistent\[[0-9]{1,11}\]:[ \t]{1,3}([^$]{1,})$/\1/
         # Search: Sep 24 01:45:01 servername appname[828338]: message
-        s/^[A-Za-z]{3} [0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2} [^:]{5,32}\]: //
+        s/^[A-Za-z]{3}[ \t]{1,3}[0-9]{1,2}[ \t]{1,3}[0-9]{2}:[0-9]{2}:[0-9]{2}[ \t]{1,3}[^:]{5,32}\]: //
         # Search: Sep 24 01:45:01
-        s/^[A-Za-z]{3} [0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2} [^ ]+ //
+        s/^[A-Za-z]{3}[ \t]{1,3}[0-9]{1,2}[ \t]{1,3}[0-9]{2}:[0-9]{2}:[0-9]{2}[ \t]{1,3}[^ ]+ //
         # Search: 2024-09-24T01:42:01.469131+03:00 srv appname[2935502]: message
-        s/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+[+-][0-9]{2}:[0-9]{2} [^ ]{2,32} [^ ]{2,12}\[[0-9]+\]: [^ ]+ //
+        s/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+[+-][0-9]{2}:[0-9]{2}[ \t]{1,3}[^ ]{2,32} [^ ]{2,12}\[[0-9]+\]: [^ ]+ //
         # Search: 2024-09-24T01:42:01.469131+03:00
-        s/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+[+-][0-9]{2}:[0-9]{2} [^ ]+ //
+        s/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+[+-][0-9]{2}:[0-9]{2}[ \t]{1,3}[^ ]+ //
         # Search: Mon Sep 23 20:58:26 2024
         s/^\s*[A-Za-z]{3}\s*[A-Za-z]{3}\s*[0-9]{1,2}\s*[0-9]{2}:[0-9]{2}:[0-9]{2}\s*[0-9]{4}\s*//
         # Search: [Fri Sep  6 04:41:47 2024] copyq[1309443]: segfault at 50
-        s/^\s*\[[A-Za-z]{3}\s*[A-Za-z]{3}\s*[0-9]{1,2}\s*[0-9]{2}:[0-9]{2}:[0-9]{2}\s*[0-9]{4}\s*\] [^ ]{2,12}\[[0-9]+\]: segfault at( [^ \t]{1,32}).+/segfault at\1/
+        s/^\s*\[[A-Za-z]{3}\s*[A-Za-z]{3}\s*[0-9]{1,2}\s*[0-9]{2}:[0-9]{2}:[0-9]{2}\s*[0-9]{4}\s*\][ \t]{1,3}[^ ]{2,12}\[[0-9]+\]: segfault at( [^ \t]{1,32}).+/segfault at\1/
         # Search: [Fri Sep  6 04:41:47 2024]
         s/^\s*\[[A-Za-z]{3}\s*[A-Za-z]{3}\s*[0-9]{1,2}\s*[0-9]{2}:[0-9]{2}:[0-9]{2}\s*[0-9]{4}\s*\]//
         # Search: *asm_exc_page_fault+0x1e/0x30
@@ -777,7 +844,7 @@ analyze_log() {
         if [[ -f "$log_file" ]]; then  # Check file exist
             echo -e "\n${bg_bright_black}\033[38;5;253mAnalyzing ${log_name}:${NC}"
             if [[ -n $filter_command ]]; then
-                eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
+                eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
                     echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
@@ -785,7 +852,7 @@ analyze_log() {
                     printf "%b\n" "${output}"
                 done
             else
-                $log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
+                $log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
                     echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
@@ -800,7 +867,7 @@ analyze_log() {
         if type $command > /dev/null 2>&1; then #check command available
             echo -e "\n${bg_bright_black}\033[38;5;253mAnalyzing ${log_name}:${NC}"
             if [[ -n $filter_command ]]; then
-                eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
+                eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
                     echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
@@ -808,7 +875,7 @@ analyze_log() {
                     printf "%b\n" "${output}"
                 done
             else
-                $log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_timestamp | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
+                $log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
                     echo -ne "    [${DARK_YELLOW}${logcnt}${NC}] "
@@ -824,6 +891,8 @@ analyze_log() {
     fi
 }
 
+tail_small_depth=$(( ${tail_depth} / 4 ))
+
 # Check logs
 analyze_log "syslog" "tail -${tail_depth} /var/log/syslog" "grep -vE 'auth failed|no auth attempts'"
 analyze_log "journalctl" "journalctl -n ${tail_depth}"
@@ -834,6 +903,14 @@ analyze_log "messages" "tail -${tail_depth} /var/log/messages"
 analyze_log "apache2 error.log" "tail -${tail_depth} /var/log/apache2/error.log"
 analyze_log "apache2 error_log" "tail -${tail_depth} /var/log/apache2/error_log"
 analyze_log "httpd error.log" "tail -${tail_depth} /var/log/httpd/error.log"
-analyze_log "httpd error_log" "tail -${tail_depth} /var/log/apache2/error_log"
+analyze_log "httpd error_log" "tail -${tail_depth} /var/log/httpd/error_log"
 analyze_log "nginx error.log" "tail -${tail_depth} /var/log/nginx/error.log" "grep -v '13: Permission denied'"
+analyze_log "nginx error.log" "tail -${tail_depth} /var/log/nginx/error_log" "grep -v '13: Permission denied'"
+analyze_log "daemon.log" "tail -${tail_small_depth} /var/log/daemon.log"
+
+for tl in /var/log/php*fpm.log; do 
+    analyze_log "${tl##*/}" "tail -${tail_small_depth} ${tl}"
+done
+
+analyze_log "TESTLOG" "cat /home/xakep/Documents/scripts/supportgitsrv.fv.ee/esd/tests/testlog"
 echo ""
