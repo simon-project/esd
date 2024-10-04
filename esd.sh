@@ -841,7 +841,6 @@ analyze_log() {
     local warn="(Cannot allocate memory|marked as crashed|Table corruption|Database page corruption|errno: 145|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:|service: Failed)"
     local regex_trigger="(${grep_patterns})"
 
-
     get_log_rows() {
         local lines=0
         while IFS= read -r line; do

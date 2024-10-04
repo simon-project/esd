@@ -12,7 +12,7 @@
 Просто выполните на сервере эту команду:
 
 ```
-curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q 514f667297e8c5fca59e5e4366545dd5 && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
+curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q bc2d31092d1c39799203c7662a877a6c && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
 ```
 
 ### English
@@ -29,6 +29,6 @@ curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-pro
 Jusr run this command on the server:
 
 ```
-curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q 514f667297e8c5fca59e5e4366545dd5 && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
+curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q bc2d31092d1c39799203c7662a877a6c && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
 ```
 
