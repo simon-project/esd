@@ -849,7 +849,7 @@ analyze_log() {
             ((lines++))
         done
         if [[ "${lines}" -eq "0" ]]; then
-            printf "    %-48s \t%s\n" "${log_name}" "$(echo -e "\033[1;32m[OK]\033[0m")"
+            printf "    %-32s \t%s\n" "${log_name}" "$(echo -e "\033[1;32m[OK]\033[0m")"
         fi
     }
     # If log it is file
