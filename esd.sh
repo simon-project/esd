@@ -849,7 +849,8 @@ analyze_log() {
             ((lines++))
         done
         if [[ "${lines}" -eq "0" ]]; then
-            echo -e "   ${log_name} \t${GREEN}[OK]${NC}"
+            #echo -e $(printf "    %-90s \t%s" "${log_name}" "${GREEN}[OK]${NC}")
+            printf "    %-48s \t%s\n" "${log_name}" "$(echo -e "\033[1;32m[OK]\033[0m")"
         fi
     }
     # If log it is file
@@ -946,10 +947,6 @@ analyze_log() {
                     logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
-                    #if [[ "${output}" == "" ]]; then
-                    #    echo "${line}"
-                    #    echo "$log_command | grep -F '${logsearch}' | tail -1"
-                    #fi
                     printf "%b\n" "${output}"
                 done
             fi | get_log_rows | sort_by_date
