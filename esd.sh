@@ -849,7 +849,6 @@ analyze_log() {
             ((lines++))
         done
         if [[ "${lines}" -eq "0" ]]; then
-            #echo -e $(printf "    %-90s \t%s" "${log_name}" "${GREEN}[OK]${NC}")
             printf "    %-48s \t%s\n" "${log_name}" "$(echo -e "\033[1;32m[OK]\033[0m")"
         fi
     }
