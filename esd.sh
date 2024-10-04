@@ -103,7 +103,7 @@ else
 fi
 
 #because uptime -p is not available on some OS
-uptimep=$(uptime | sed -E 's/^.+up[ \t]{1,7}([0-9]+)[ \t]{1,7}([^ \t]{2,12})[ \t]{1,7}([0-9]{1,2}):([0-9]{1,2}).+/up \1 \2 \3 hours \4 minutes/; s/^.+up[ \t]{1,7}([0-9]{1,2}):([0-9]{1,2}).+/up \1 hours \2 minutes/')
+uptimep=$(uptime | sed -E 's/^.+up[ \t]{1,7}([0-9]+)[ \t]{1,7}([^ \t]{2,12})[ \t]{1,7}([0-9]{1,2}):([0-9]{1,2}).+/up \1 \2 \3 hours \4 minutes/; s/^.+up[ \t]{1,7}([0-9]{1,2}):([0-9]{1,2}).+/up \1 hours \2 minutes/; s/^.+up[ \t]{1,7}([0-9]+)[ \t]{1,7}([^ \t]{2,12})[ \t]{1,7}([0-9]{1,2}[ \t]{1,7}min).+/up \1 \2 \3/')
 echo -e "${os_color}$os_name ${os_version}, ${uptimep}${NC}\n"
 
 if type curl >/dev/null 2>&1; then
