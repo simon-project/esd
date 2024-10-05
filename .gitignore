@@ -1,4 +1,6 @@
 *.md5-hash
 backup_*
+backup/*
 sadmin.sh
 update.sh
+tests/*

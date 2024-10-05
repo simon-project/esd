@@ -107,56 +107,141 @@ uptimep=$(uptime | sed -E 's/^.+up[ \t]{1,7}([0-9]+)[ \t]{1,7}([^ \t]{2,12})[ \t
 echo -e "${os_color}$os_name ${os_version}, ${uptimep}${NC}\n"
 
 if type curl >/dev/null 2>&1; then
-    rip=$(curl --insecure -4 -L --max-time 7 --connect-timeout 7 https://ifconfig.me 2>/dev/null)
+    rip=$(timeout 7 curl --insecure -4 -L --max-time 7 --connect-timeout 7 https://ifconfig.me 2>/dev/null)
 fi
 if ! echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
     if type wget >/dev/null 2>&1; then
-        rip=$(wget --no-check-certificate --inet4-only --prefer-family=IPv4 --timeout=7 --tries=1 -qO- https://ifconfig.me)
+        rip=$(timeout 7 wget --no-check-certificate --inet4-only --prefer-family=IPv4 --timeout=7 --tries=1 -qO- https://ifconfig.me)
     fi
 fi
-
-if echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then 
-    echo -e "This server IPv4 address is [\033[38;5;51m${rip}${NC}]\n";
-else
-    echo -e "Unable to get remote IPv4-addr of this server via HTTP request to https://ifconfig.me\n - may be network or another problem or no curl/wget installed. [\033[38;5;68m${rip}${NC}]\n";
+if ! echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    if type curl >/dev/null 2>&1; then
+        rip=$(timeout 7 curl --insecure -4 -L --max-time 7 --connect-timeout 7 https://ipinfo.io/ip 2>/dev/null)
+    fi
 fi
-
+if ! echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    if type wget >/dev/null 2>&1; then
+        rip=$(timeout 7 wget --no-check-certificate --inet4-only --prefer-family=IPv4 --timeout=7 --tries=1 -qO- https://ipinfo.io/ip)
+    fi
+fi
+if echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then 
+    echo -e "The \033[3mremote${NC} IPv4 address of this server is [\033[38;5;51m${rip}${NC}]\n";
+    echo_ip_notfound() {
+        echo -e "    IP \033[38;5;51m${rip}${NC} is not found on the local interfaces."
+    }
+    if type ip >/dev/null 2>&1; then
+        if ! ip a | grep -E 'inet(6)? ' | awk '{print $2}'| awk -F '/' '{print $1}' | grep -q "${rip}"; then 
+            echo_ip_notfound
+        fi
+    elif type ifconfig >/dev/null 2>&1; then
+        if ! ifconfig | grep -E 'inet(6)? ' | awk '{print $2}'| awk -F '/' '{print $1}' | grep -q "${rip}"; then
+            echo_ip_notfound
+        fi
+    else
+        echo -e "Where are we? Cannot find ifconfig or ip installed."
+    fi
+else
+    echo -e "Unable to get remote IPv4-addr of this server via HTTP request to https://ifconfig.me and https://ipinfo.io/ip\n - may be network or another problem or no curl/wget installed. [\033[38;5;68m${rip}${NC}]\n";
+fi
+if echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then
+    CPIP="${rip}"
+else
+    if  which ip; then
+        CPIP=$(ip a | grep inet | grep -E 'brd|scope global' | awk '{print $2}' | awk -F '/' '{print $1}' |head -1 | awk '{print $1}');
+    else
+        CPIP=$(ifconfig | grep 'inet addr' | grep -v 127.0 | awk '{print $2}' | awk -F ':' '{print $2}' | head -1 | awk '{print $1}');
+    fi;
+fi
+isplogin() {
+    local CPIP="$1"
+    FVK=$(date | md5sum | head -c16);
+    if [ -f "/usr/local/mgr5/sbin/mgrctl" ]; then
+        /usr/local/mgr5/sbin/mgrctl -m ispmgr session.newkey username=root key=$FVK sok=o;
+        echo "https://${CPIP}:1500/manager/ispmgr?func=auth&username=root&key=${FVK}&checkcookie=no";
+        echo "https://${CPIP}/manager/ispmgr?func=auth&username=root&key=${FVK}&checkcookie=no";
+    fi;
+    if [ -f "/usr/local/ispmgr/sbin/mgrctl" ]; then
+        /usr/local/ispmgr/sbin/mgrctl -m ispmgr session.newkey username=root key=$FVK sok=o; 
+        echo "https://${CPIP}:1500/manager/ispmgr?func=auth&username=root&key=${FVK}&checkcookie=no";
+        echo "https://${CPIP}/manager/ispmgr?func=auth&username=root&key=${FVK}&checkcookie=no"; 
+    fi;
+}
+fp2login() {
+    local CPIP="$1"
+    fp2url=$(mogwai usrlogin)
+    echo "https://${CPIP}:${fp2url##*:}"
+}
+vestalogin() {
+    local CPIP="$1"
+    echo $(curl -s -X POST "https://${CPIP}:8083/api/" -d "user=admin&password=$(grep 'PASSWORD=' /usr/local/vesta/conf/mysql.conf | awk -F\' '{print $2}')")
+}
+dalogin() {
+    local CPIP="$1"
+    echo $(curl -s --request POST "https://${CPIP}:2222/CMD_LOGIN?username=admin" --data "passwd=$(cat /usr/local/directadmin/scripts/setup.txt | grep adminpass= | cut -d= -f2)" | grep -oP '(?<=Location: ).*')
+}
+fplogin() {
+    local CPIP="$1"
+    if ! type htpasswd >/dev/null 2>&1; then
+        return
+    fi
+    if grep -q "^t2fpsupport:" /var/www/.htpasswd; then
+        echo "User t2fpsupport already exists."
+        return
+    fi
+    cpassword=$(date +%s | md5sum | head -c 32)
+    if [[ -f /var/www/.htpasswd ]]; then
+        htpasswd -b /var/www/.htpasswd t2fpsupport "${cpassword}"
+        /etc/init.d/lighttpd restart
+        (sleep 600 && sed -i '/^t2fpsupport:/d' /var/www/.htpasswd && /etc/init.d/lighttpd restart) &
+        echo "https://t2fpsupport:${cpassword}@${CPIP}:8888/"
+    fi
+}
+whmlogin() {
+    local CPIP="$1"
+    echo $(whmapi1 create_user_session user=root service=cpaneld | grep -oP '(?<=url: ).*')
+}
 detect_panel() {
     directories=(fastpanel fastpanel2 mgr5 ispmgr cpanel vesta directadmin)
     found_dirs=()
-
     for dir in "${directories[@]}"; do
         if [ -d "/usr/local/$dir" ]; then
             found_dirs+=("$dir")
             case "$dir" in
-                fastpanel)
-                    echo "Found FastPanel (old)"
-                    ;;
                 fastpanel2)
-                    echo "Found FASTPANEL2"
-                    #TODO login  mogwai
-                    # get ip
-                    # curl --insecure -4 -L --max-time 7 --connect-timeout 7 https://ifconfig.me
-                    #others...
-# bash: line 86: ((: 22.04: syntax error: invalid arithmetic operator (error token is ".04")
-# bash: line 88: ((: 22.04: syntax error: invalid arithmetic operator (error token is ".04")
+                    echo -e "Found \033[38;5;21mF\033[38;5;20mA\033[38;5;19mS\033[38;5;54mT\033[38;5;55mP\033[38;5;56mA\033[38;5;57mN\033[38;5;21mE\033[38;5;20mL\033[38;5;39m2${NC}"
+                    panel_login_url=$(timeout 7 bash -c 'source /dev/stdin && fp2login "'"${CPIP}"'"' < <(declare -f fp2login))
+                    ;;
+                fastpanel)
+                    echo -e "Found \033[38;5;54mFastPanel (old)${NC}"
+                    panel_login_url=$(timeout 7 bash -c 'source /dev/stdin && fplogin "'"${CPIP}"'"' < <(declare -f fplogin))
                     ;;
                 mgr5)
-                    echo "Found mgr5"
+                    echo -e "Found \033[38;5;51mmgr5${NC}"
+                    panel_login_url=$(timeout 7 bash -c 'source /dev/stdin && isplogin "'"${CPIP}"'"' < <(declare -f isplogin))
                     ;;
                 ispmgr)
-                    echo "Found ispmgr (old)"
+                    echo -e "Found \033[38;5;54mispmgr (old)${NC}"
+                    panel_login_url=$(timeout 7 bash -c 'source /dev/stdin && isplogin "'"${CPIP}"'"' < <(declare -f isplogin))
                     ;;
                 cpanel)
-                    echo "Found cPanel"
+                    echo -e "Found \033[38;5;76mcPanel${NC}"
+                    panel_login_url=$(timeout 7 bash -c 'source /dev/stdin && whmlogin "'"${CPIP}"'"' < <(declare -f whmlogin))
                     ;;
                 vesta)
-                    echo "Found VestaCP"
+                    echo -e "Found \033[38;5;93mVestaCP${NC}"
+                    panel_login_url=$(timeout 7 bash -c 'source /dev/stdin && vestalogin "'"${CPIP}"'"' < <(declare -f vestalogin))
                     ;;
                 directadmin)
-                    echo "Found DirectAdmin"
+                    echo -e "Found \033[38;5;51mDirectAdmin${NC}"
+                    panel_login_url=$(timeout 7 bash -c 'source /dev/stdin && dalogin "'"${CPIP}"'"' < <(declare -f dalogin))
                     ;;
             esac
+            if [[ "$panel_login_url" =~ ^https:// ]]; then
+                echo -e "Login URL:\n\033[38;5;39m\033[48;5;16m${panel_login_url}${NC}"
+            else
+                echo "Cannot generate URL for login in ${dir}"
+                panel_login_url=""
+            fi
         fi
     done
 
@@ -290,6 +375,7 @@ check_value() {
 }
 
 check_disks_and_controllers() {
+    local disknvme="no"
     if type smartctl > /dev/null 2>&1; then
         disks=$(ls /dev/sd* /dev/hd* /dev/nvme* 2>/dev/null | grep -E '/dev/sd[a-z]+$|/dev/hd[a-z]+$|/dev/nvme[0-9]n[0-9]$')
 
@@ -299,9 +385,11 @@ check_disks_and_controllers() {
                 smart_output=$(smartctl -a "$disk" 2>/dev/null)
                 alt_smart_output=$(smartctl -a "${disk%n*}" 2>/dev/null)
                 smart_output="$smart_output"$'\n'"$alt_smart_output"
+                disknvme="yes"
             else
                 # For other disks
                 smart_output=$(smartctl -a "$disk" 2>/dev/null)
+                disknvme="no"
             fi
             # Search hours
             smartheader=$(echo "$smart_output" |sort -u | grep -Ei 'Num\s+Test_Description\s+Status')
@@ -363,7 +451,11 @@ check_disks_and_controllers() {
                     hdelay=$((PoH - hours_value))
                 fi
                 if [[ "${hdelay}" -gt "168" ]]; then
-                    errors=$(echo -e "${RED}No disk monitoring?${NC} The last ${WHITE}$disk${NC} smartctl tests were run ${RED}${hdelay}${NC} hours ago!\n${errors}")
+                    if [[ "${disknvme}" == "yes" && "${hours_value}" == "0" ]]; then
+                        errors=$(echo -e "\033[38;5;55mCan't check when the S.M.A.R.T. tests were last run.${NC}")
+                    else
+                        errors=$(echo -e "${RED}No disk monitoring?${NC} It seems that the last ${WHITE}${disk}${NC} smartctl test was run ${RED}${hdelay}${NC} hours ago!")
+                    fi
                 fi
             fi
 
@@ -393,6 +485,9 @@ check_disks_and_controllers() {
             fi
         done
     else
+        if ls /dev/sd* /dev/hd* /dev/nvme* 2>/dev/null | grep -q .; then
+            echo -e "\033[38;5;242msmartctl not found${NC}"
+        fi
         return
     fi
 
@@ -765,6 +860,10 @@ exclude_patterns="error log file re-opened|xrdp_(sec|rdp|process|iso)_|plasmashe
 
 strip_log() {
     sed -E '
+        s/^.+(ERROR[ \t]{1,7}Cannot[ \t]{1,7}reissue|can[ \t]{1,7}not[ \t]{1,7}be[ \t]{1,7}issued[ \t]{1,7}as[ \t]{1,7}URL).+/\1/
+        s/^.+routines:tls_parse_ctos_key_share:bad.+/routines:tls_parse_ctos_key_share:bad/
+        s/^[^\[]+\[[^\]+\]([^\[]+)/\1/
+        s/^.+((is[ \t]{1,7}not[ \t]{1,7}found|failed).+No[ \t]{1,7}such[ \t]{1,7}file[ \t]{1,7}or[ \t]{1,7}directory).+HTTP.+/\1/
         s/^.+(pci[ \t]{1,7}.+:).+\[.+\]:.+failed to assign.*/\1/
         s/^.+(mysql\.service:[ \t]{1,7}Failed[ \t]{1,7}with[ \t]{1,7}result[ \t]{1,7}.+)/\1/
         s/^.+(mysql.service:[ \t]{1,7}Unit[ \t]{1,7}entered[ \t]{1,7}failed[ \t]{1,7}state).+/\1/
@@ -828,6 +927,7 @@ strip_log() {
         s/^.+([ \t][^ \t]{1,128} service crashed, restarting service.+)$/\1/
         # Search: [1527399.492467]
         s/^\s*\[\s*[0-9]+\.[0-9]+\] //
+        s/^[ \t]*\[[0-9TZ:\-]{20,}\] (.+)/\1/
     '
 }
 
@@ -859,7 +959,7 @@ analyze_log() {
             if [[ -n $filter_command ]]; then
                 eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
-                    cntcolor="${DARK_YELLOW}";
+                    cntcolor="\033[38;5;244m";
                     if [[ "${logcnt}" -ge "3" ]]; then
                         cntcolor='\033[38;5;172m';
                     fi
@@ -872,7 +972,9 @@ analyze_log() {
                     if [[ "${logcnt}" -ge "50" ]]; then
                         cntcolor='\033[38;5;160m';
                     fi
-                    logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
+                    logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g; s/^[\t \-]{1,30}//g')
+                    #echo "line [${line}]"
+                    #echo "logsearch [${logsearch}]"
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
@@ -880,7 +982,7 @@ analyze_log() {
             else
                 $log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
-                    cntcolor="${DARK_YELLOW}";
+                    cntcolor="\033[38;5;244m";
                     if [[ "${logcnt}" -ge "3" ]]; then
                         cntcolor='\033[38;5;172m';
                     fi
@@ -893,7 +995,9 @@ analyze_log() {
                     if [[ "${logcnt}" -ge "50" ]]; then
                         cntcolor='\033[38;5;160m';
                     fi
-                    logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
+                    logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g; s/^[\t \-]{1,30}//g')
+                    #echo "line [${line}]"
+                    #echo "logsearch [${logsearch}]"
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
@@ -908,7 +1012,7 @@ analyze_log() {
             if [[ -n $filter_command ]]; then
                 eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
-                    cntcolor="${DARK_YELLOW}";
+                    cntcolor="\033[38;5;244m";
                     if [[ "${logcnt}" -ge "3" ]]; then
                         cntcolor='\033[38;5;172m';
                     fi
@@ -921,7 +1025,9 @@ analyze_log() {
                     if [[ "${logcnt}" -ge "50" ]]; then
                         cntcolor='\033[38;5;160m';
                     fi
-                    logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
+                    logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g; s/^[\t \-]{1,30}//g')
+                    #echo "line [${line}]"
+                    #echo "logsearch [${logsearch}]"
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
@@ -929,7 +1035,7 @@ analyze_log() {
             else
                 $log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
                     logcnt=$(echo "${line}" | awk '{print $1}')
-                    cntcolor="${DARK_YELLOW}";
+                    cntcolor="\033[38;5;244m";
                     if [[ "${logcnt}" -ge "3" ]]; then
                         cntcolor='\033[38;5;172m';
                     fi
@@ -942,7 +1048,9 @@ analyze_log() {
                     if [[ "${logcnt}" -ge "50" ]]; then
                         cntcolor='\033[38;5;160m';
                     fi
-                    logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g')
+                    logsearch=$(echo "${line}" | sed -E 's/^[ \t]{0,30}[0-9]{1,10}[ \t]{0,30}//g; s/^[\t \-]{1,30}//g')
+                    #echo "line [${line}]"
+                    #echo "logsearch [${logsearch}]"
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
@@ -977,3 +1085,5 @@ done
 
 analyze_log "TESTLOG" "tail -${tail_small_depth} tests/testlog"
 echo ""
+
+#esdfulldwnldok
