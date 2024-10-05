@@ -520,6 +520,22 @@ check_disks_and_controllers() {
 check_disks_and_controllers
 
 # RAM SWAP
+check_swap_ps() {
+    echo "    ${DARK_YELLOW}TOP-10 swap usage:${NC}";
+    current_line=0
+    ps_out=$(ps -e -o pid --no-headers)
+    ps_rows=$(echo "${ps_out}" | wc -l)
+    echo -e "${ps_out}" | while read pid; do
+        ((current_line++))
+        percent=$(( 100 * current_line / ps_rows ))
+        echo -ne "\033[2K\rProcessing swap: $percent%" >&2
+        comm=$(awk '/^Name:/{print $2}' /proc/$pid/status 2>/dev/null)  # получаем имя процесса через /proc/$pid/status
+        awk '/VmSwap/{print $2 " " "'$comm'"}' /proc/$pid/status 2>/dev/null;
+    done | awk '{proc[$2] += $1} END {for (p in proc) printf "        %.2f MB\t\t%s\n", proc[p]/1024, p}' | sort -nr | head -10
+    echo -ne "\033[2K\r                                               " >&2
+    echo -ne "\033[2K\r" >&2
+    echo -e "    \n"
+}
 
 check_ram_swap() {
     local min_free_mem=50
@@ -540,12 +556,12 @@ check_ram_swap() {
     fi
     if (( used_swap > max_swap_usage )); then
         result+="    ${DARK_YELLOW}Warning: Swap usage is high (${YELLOW}${used_swap}MB${NC})\n"
+        result+=$(check_swap_ps)
     fi
     if [[ -n "$result" ]]; then
-        echo "$result"
+        echo -e "$result"
     fi
 }
-
 ram_swap_status=$(check_ram_swap)
 if [[ -n "${ram_swap_status}" ]]; then
     echo -e "${DARK_YELLOW}RAM|SWAP usage \t\t\t${RED}[ATTENTION]${NC}"
