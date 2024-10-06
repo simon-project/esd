@@ -425,7 +425,7 @@ check_disks_and_controllers() {
             fi
             errors=$(echo "${smart_output}" | grep -iE 'SMART overall-health self-assessment test result:\s{1,10}FAILED|Completed:\s{1,10}read failure|[^_\-]error[^_\-]|[^_\-]fail|critical|SMART overall-health self-assessment test result: FAILED' | grep -viE 'without error|Power_on_Hours\s+Failing_LBA|Critical.*:|Error.*:|Media.*Errors:|No Errors Logged|Error Information\s*\(.*\)|SMART Error Log not supported|SCT Error Recovery Control supported')
             if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3: INIT errors:\n-------------\n-----------\n${errors}\n-------------\n-------------\n"; fi
-            serial=$(echo "$smart_output" | grep -i 'serial number' | sort -u | awk -F: '{print $2}' | sed 's/[^[:digit:]]//g')
+            serial=$(echo "$smart_output" | grep -i 'serial number' | sort -u | awk -F: '{print $2}')
             Percentage_Used=$(echo "$smart_output" | grep -i 'Percentage Used' | sort -u | awk -F: '{print $2}' | sed 's/[^[:digit:]]//g')
             altPower_On_Hours=$(echo "$smart_output" | grep -i 'Power On Hours' | sort | uniq | awk -F: '{print $2}' | sed 's/[^[:digit:]]//g')
 
