@@ -36,8 +36,6 @@ The downside of this approach is the need to update the saved md5-hash in the co
 * Memory usage by users may display inflated values since shared memory used by processes cannot be accurately excluded in the calculation.
 
 [English](#Eng) | [Russian](#Ru)<a id=Ru></a>
-###Ru
-
 # Express Server Diagnostics
 
 * Не требует установки
