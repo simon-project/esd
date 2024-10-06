@@ -348,7 +348,7 @@ check_mdstat() {
     else
         echo -e "${DARK_YELLOW}/proc/mdstat exists, but no RAID arrays found${NC}"
     fi
-    if echo "$mdstat_content" | grep -qiE "\[[^\]]*_[^\[]*\]"; then
+    if echo "$mdstat_content" | grep -qiE "\[.{0,5}(_U|U_).{0,5}\]"; then
         echo -e "${LIGHT_RED}/proc/mdstat - DEGRADED${NC}"
         return
     fi
