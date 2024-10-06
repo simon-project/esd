@@ -25,11 +25,20 @@ bold='\033[1m'
 NC='\033[0m' # reset
 
 if [[ "${LNS}" =~ ^[0-9]+$ ]]; then
-    tail_depth="${LNS}"
+    export tail_depth="${LNS}"
 else
-    tail_depth="10000"
+    export tail_depth="10000"
 fi
-
+if [[ "${LOG_TAIL}" =~ ^[0-9]+$ ]]; then
+    export log_tail="${LOG_TAIL}"
+else
+    export log_tail="30"
+fi
+if [[ "${DEBUG_SMARTCTL}" =~ ^[0-9]+$ ]]; then
+    export debug_smartctl="${DEBUG_SMARTCTL}"
+else
+    export debug_smartctl="0"
+fi
 # No bc
 if ! type bc &>/dev/null; then
     bc() {
@@ -267,8 +276,8 @@ else
 fi
 
 # Disk space and inodes
-df_output=$(df -h --exclude-type=squashfs --exclude-type=tmpfs --exclude-type=devtmpfs)
-df_inodes_output=$(df -i --exclude-type=squashfs --exclude-type=tmpfs --exclude-type=devtmpfs)
+df_output=$(df -h --exclude-type=squashfs --exclude-type=tmpfs --exclude-type=devtmpfs | grep -vE "/var/lib/docker")
+df_inodes_output=$(df -i --exclude-type=squashfs --exclude-type=tmpfs --exclude-type=devtmpfs | grep -vE "/var/lib/docker")
 
 function check_usage() {
     local line="$1"
@@ -349,7 +358,7 @@ check_mdstat() {
         return
     fi
 
-    echo -e "/proc/mdstat - ${GREEN}[OK]${NC}"  # No problems
+    echo -e "/proc/mdstat \t\t\t${GREEN}[OK]${NC}"  # No problems
 }
 
 check_mdstat
@@ -377,9 +386,9 @@ check_value() {
 check_disks_and_controllers() {
     local disknvme="no"
     if type smartctl > /dev/null 2>&1; then
-        disks=$(ls /dev/sd* /dev/hd* /dev/nvme* 2>/dev/null | grep -E '/dev/sd[a-z]+$|/dev/hd[a-z]+$|/dev/nvme[0-9]n[0-9]$')
-
+        disks=$(ls /dev/sd* /dev/hd* /dev/nvme* tests/sd* 2>/dev/null | grep -E 'tests/sd[a-z][0-9]+$|/dev/sd[a-z]+$|/dev/hd[a-z]+$|/dev/nvme[0-9]n[0-9]$')
         for disk in $disks; do
+            if [[ "${debug_smartctl}" -gt "0" ]]; then echo -e "\n------------------------------------------------------------\nDEBUG 1: Disk: [${disk}]\n"; fi
             if [[ "${disk}" == /dev/nvme* ]]; then
                 # For NVME-disks make two calls
                 smart_output=$(smartctl -a "$disk" 2>/dev/null)
@@ -388,9 +397,15 @@ check_disks_and_controllers() {
                 disknvme="yes"
             else
                 # For other disks
-                smart_output=$(smartctl -a "$disk" 2>/dev/null)
+                if [[ "${disk}" =~ ^tests/sd.* ]]; then
+                    smart_output=$(cat "$disk" 2>/dev/null)
+                else
+                    smart_output=$(smartctl -a "$disk" 2>/dev/null)
+                fi
                 disknvme="no"
             fi
+            if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3: disknvme: [${disknvme}]\n"; fi
+            if [[ "${debug_smartctl}" -gt "6" ]]; then echo -e "DEBUG 7: smartctl output:\n----------------------\n---------->%----------\n\n${smart_output}\n\n----------%<----------\n----------------------\n"; fi
             # Search hours
             smartheader=$(echo "$smart_output" |sort -u | grep -Ei 'Num\s+Test_Description\s+Status')
             hours_column=$(echo "${smartheader}" | awk '{
@@ -401,16 +416,15 @@ check_disks_and_controllers() {
                     }
                 }
             }')
+            if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3:\nsmartheader: [${smartheader}]\nhours_column: [${hours_column}]\n"; fi
 
             if [[ -n "$hours_column" ]]; then
-                hours_line=$(echo "$smart_output" | awk -v hours_col="$hours_column" '
-                /^\s*[#]?\s*[0-1]?\s+(Extended|Offline|Short).{1,128}(Completed|progress).{1,128}[0-9]{1,10}/ { print $0; exit }
-                /^\s*1\s+(Extended|Offline|Short).{1,128}(Completed|progress).{1,128}[0-9]{1,10}/ && !found { found = 1; print $0 }
-                ')
-                hours_value=$(echo "$hours_line" | sed 's/^[ \t]*//' | awk -v col="$hours_column" 'BEGIN {FS = "([ \t]{2,}|[\t]+)"} {print $col}')
+                hours_line=$(echo "$smart_output" | grep -E "^\s*[#]?\s*[0-1]?\s+(Extended|Offline|Short).{1,128}(Completed|progress).{1,128}[0-9]{1,10}" | head -1)
+                hours_value=$(echo "$hours_line" | sed 's/^[ \t]*//' |sed 's/^[ \t]*//'| sed -E 's/([^ ])[ ]([^ ])/\1\2/g'| sed -E 's/[ \t]{2,}/;esd;/g' | awk -v col="${hours_column}" -F';esd;' '{print $col}')
+                if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3: hours_line: [${hours_line}]\nhours_value: [${hours_value}]\n"; fi
             fi
-
-            errors=$(echo "${smart_output}" | grep -iE 'SMART overall-health self-assessment test result:\s{1,10}FAILED|Completed:\s{1,10}read failure|[^_\-]error|[^_\-]fail|critical|SMART overall-health self-assessment test result: FAILED' | grep -viE 'without error|Power_on_Hours\s+Failing_LBA|Critical.*:|Error.*:|Media.*Errors:|No Errors Logged|Error Information\s*\(.*\)|SMART Error Log not supported|SCT Error Recovery Control supported')
+            errors=$(echo "${smart_output}" | grep -iE 'SMART overall-health self-assessment test result:\s{1,10}FAILED|Completed:\s{1,10}read failure|[^_\-]error[^_\-]|[^_\-]fail|critical|SMART overall-health self-assessment test result: FAILED' | grep -viE 'without error|Power_on_Hours\s+Failing_LBA|Critical.*:|Error.*:|Media.*Errors:|No Errors Logged|Error Information\s*\(.*\)|SMART Error Log not supported|SCT Error Recovery Control supported')
+            if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3: INIT errors:\n-------------\n-----------\n${errors}\n-------------\n-------------\n"; fi
             serial=$(echo "$smart_output" | grep -i 'serial number' | sort -u | awk -F: '{print $2}' | sed 's/[^[:digit:]]//g')
             Percentage_Used=$(echo "$smart_output" | grep -i 'Percentage Used' | sort -u | awk -F: '{print $2}' | sed 's/[^[:digit:]]//g')
             altPower_On_Hours=$(echo "$smart_output" | grep -i 'Power On Hours' | sort | uniq | awk -F: '{print $2}' | sed 's/[^[:digit:]]//g')
@@ -431,9 +445,9 @@ check_disks_and_controllers() {
             errors=$(check_value "Current_Pending_Sector" "${Current_Pending_Sector}" 200 "$errors")
             errors=$(check_value "Reported_Uncorrect" "${Reported_Uncorrect}" 200 "$errors")
 
-
             if [[ ! -n "${hours_value}" ]]; then
                 hours_value="0"
+                if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3: no hours_value, so set hours_value to 0\n"; fi
             fi
             if [[ -n "${altPower_On_Hours}" && "${altPower_On_Hours}" =~ ^[0-9]+$ ]]; then
                 PoH="${altPower_On_Hours}"
@@ -447,8 +461,10 @@ check_disks_and_controllers() {
                 fi
                 if [[ "${PoH2}" -ge "${hours_value}" ]]; then
                     hdelay=$((PoH2 - hours_value))
+                    if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3: PowerOnHours2: [${PoH2}], delay: [${hdelay}]\n"; fi
                 else
                     hdelay=$((PoH - hours_value))
+                    if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3: PowerOnHours: [${PoH}], delay: [${hdelay}]\n"; fi
                 fi
                 if [[ "${hdelay}" -gt "168" ]]; then
                     if [[ "${disknvme}" == "yes" && "${hours_value}" == "0" ]]; then
@@ -872,7 +888,7 @@ sort_by_date() {
 
 # Logw patterns
 grep_patterns="Cannot allocate memory|Too many open files|marked as crashed|Table corruption|Database page corruption|errno: 145|SYN flooding|emerg|error|temperature|[^e]fault|fail[^2]|i/o.*(error|fail|fault)|ata.*FREEZE|ata.*LOCK|ata3.*hard resetting link|EXT4-fs error|Input/output error|memory corruption|Remounting filesystem read-only|Corrupted data|Buffer I/O error|XFS.{1,20}Corruption|Superblock last mount time is in the future|degraded array|array is degraded|disk failure|Failed to write to block|failed to read/write block|slab corruption|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:"
-exclude_patterns="error log file re-opened|xrdp_(sec|rdp|process|iso)_|plasmashell\[.*wayland|chrom.*Fontconfig error|plasmashell\[.*Image: Error decoding|Playing audio notification failed|systemd\[.*plasma-.*\.service|uvcvideo.*: Failed to|kioworker\[.*: kf.kio.core|(plasmashell|wayland)\[.*TypeError:|org_kde_powerdevil.*org\.kde\.powerdevil|Failed to set global shortcut|wayland_wrapper\[.*not fatal|RAS: Correctable Errors collector initialized|spectacle\[.*display"
+exclude_patterns="No matching DirectoryIndex|error log file re-opened|xrdp_(sec|rdp|process|iso)_|plasmashell\[.*wayland|chrom.*Fontconfig error|plasmashell\[.*Image: Error decoding|Playing audio notification failed|systemd\[.*plasma-.*\.service|uvcvideo.*: Failed to|kioworker\[.*: kf.kio.core|(plasmashell|wayland)\[.*TypeError:|org_kde_powerdevil.*org\.kde\.powerdevil|Failed to set global shortcut|wayland_wrapper\[.*not fatal|RAS: Correctable Errors collector initialized|spectacle\[.*display"
 
 strip_log() {
     sed -E '
@@ -944,6 +960,8 @@ strip_log() {
         # Search: [1527399.492467]
         s/^\s*\[\s*[0-9]+\.[0-9]+\] //
         s/^[ \t]*\[[0-9TZ:\-]{20,}\] (.+)/\1/
+        s/^.+(Failed[ \t]{1,7}to[ \t]{1,7}canonicalize[ \t]{1,7}path).+Permission[ \t]{1,7}denied.*/\1/
+        s/^.+:[ \t]{1,7}(\[[^]]{32,}\]).*/\1/
     '
 }
 
@@ -972,8 +990,12 @@ analyze_log() {
         log_file=$(echo "${log_command}" | awk '{print $3}')  # Get filename from tail
         if [[ -f "$log_file" ]]; then  # Check file exist
             echo -e "\n${bg_bright_black}\033[38;5;253mAnalyzing ${log_name}:${NC}"
+            export current_line=0
             if [[ -n $filter_command ]]; then
-                eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
+                eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}" | while IFS= read -r line; do
+                    ((current_line++))
+                    percent=$(( 100 * current_line / log_tail ))
+                    echo -ne "\033[2K\rProcessing ${log_name}: $percent%" >&2
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     cntcolor="\033[38;5;244m";
                     if [[ "${logcnt}" -ge "3" ]]; then
@@ -995,8 +1017,13 @@ analyze_log() {
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
                 done
+                echo -ne "\033[2K\r                                               " >&2
+                echo -ne "\033[2K\r" >&2
             else
-                $log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
+                $log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}" | while IFS= read -r line; do
+                    ((current_line++))  
+                    percent=$(( 100 * current_line / log_tail ))
+                    echo -ne "\033[2K\rProcessing ${log_name}: $percent%" >&2
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     cntcolor="\033[38;5;244m";
                     if [[ "${logcnt}" -ge "3" ]]; then
@@ -1018,15 +1045,21 @@ analyze_log() {
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
                 done
+                echo -ne "\033[2K\r                                               " >&2
+                echo -ne "\033[2K\r" >&2
             fi | get_log_rows | sort_by_date
         fi
     else
         # If command is not tail, check that command available in system
         command=$(echo "${log_command}" | awk '{print $1}')
         if type $command > /dev/null 2>&1; then #check command available
+            export current_line=0
             echo -e "\n${bg_bright_black}\033[38;5;253mAnalyzing ${log_name}:${NC}"
             if [[ -n $filter_command ]]; then
-                eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
+                eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}" | while IFS= read -r line; do
+                    ((current_line++))  
+                    percent=$(( 100 * current_line / log_tail ))
+                    echo -ne "\033[2K\rProcessing ${log_name}: $percent%" >&2
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     cntcolor="\033[38;5;244m";
                     if [[ "${logcnt}" -ge "3" ]]; then
@@ -1048,8 +1081,13 @@ analyze_log() {
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
                 done
+                echo -ne "\033[2K\r                                               " >&2
+                echo -ne "\033[2K\r" >&2
             else
-                $log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -30 | while IFS= read -r line; do
+                $log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}" | while IFS= read -r line; do
+                    ((current_line++))  
+                    percent=$(( 100 * current_line / log_tail ))
+                    echo -ne "\033[2K\rProcessing ${log_name}: $percent%" >&2
                     logcnt=$(echo "${line}" | awk '{print $1}')
                     cntcolor="\033[38;5;244m";
                     if [[ "${logcnt}" -ge "3" ]]; then
@@ -1071,6 +1109,8 @@ analyze_log() {
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
                     printf "%b\n" "${output}"
                 done
+                echo -ne "\033[2K\r                                               " >&2
+                echo -ne "\033[2K\r" >&2
             fi | get_log_rows | sort_by_date
         fi
     fi
