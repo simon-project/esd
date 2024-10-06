@@ -420,7 +420,7 @@ check_disks_and_controllers() {
 
             if [[ -n "$hours_column" ]]; then
                 hours_line=$(echo "$smart_output" | grep -E "^\s*[#]?\s*[0-1]?\s+(Extended|Offline|Short).{1,128}(Completed|progress).{1,128}[0-9]{1,10}" | head -1)
-                hours_value=$(echo "$hours_line" | sed 's/^[ \t]*//' |sed 's/^[ \t]*//'| sed -E 's/([^ ])[ ]([^ ])/\1\2/g'| sed -E 's/[ \t]{2,}/;esd;/g' | awk -v col="${hours_column}" -F';esd;' '{print $col}')
+                hours_value=$(echo "$hours_line" | sed 's/Self-test routine in progress /Self-test routine in progress  /g' | sed 's/^[ \t]*//' |sed 's/^[ \t]*//'| sed -E 's/([^ ])[ ]([^ ])/\1\2/g'| sed -E 's/[ \t]{2,}/;esd;/g' | awk -v col="${hours_column}" -F';esd;' '{print $col}')
                 if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3: hours_line: [${hours_line}]\nhours_value: [${hours_value}]\n"; fi
             fi
             errors=$(echo "${smart_output}" | grep -iE 'SMART overall-health self-assessment test result:\s{1,10}FAILED|Completed:\s{1,10}read failure|[^_\-]error[^_\-]|[^_\-]fail|critical|SMART overall-health self-assessment test result: FAILED' | grep -viE 'without error|Power_on_Hours\s+Failing_LBA|Critical.*:|Error.*:|Media.*Errors:|No Errors Logged|Error Information\s*\(.*\)|SMART Error Log not supported|SCT Error Recovery Control supported')
