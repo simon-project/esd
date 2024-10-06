@@ -668,7 +668,7 @@ if type systemctl >/dev/null 2>&1; then
     else
         failed_list=$(systemctl list-units --all | grep "failed" | grep -vE 'LOAD[ \t]{1,12}=[ \t]{1,12}Reflects|ACTIVE[ \t]{1,12}=[ \t]{1,12}The[ \t]{1,12}high|SUB[ \t]{1,12}=[ \t]{1,12}The[ \t]{1,12}low')
     fi
-    if [[ $(echo "${failed_list}" | grep -E '0[ \t]+loaded units listed' | wc -l) -ne "1" ]]; then
+    if [[ $(echo "${failed_list}" | grep -E '0[ \t]+loaded units listed' | wc -l) -ne "1" && $(echo "${failed_list}" | wc -l) -gt "0" ]]; then
         echo "${failed_list}" | grep -v 'UNIT' | wc -l
         echo -e "Failed systemd services \t${RED}[FOUND]${NC}"
         echo -e "\033[38;5;88m${failed_list}${NC}\n"
