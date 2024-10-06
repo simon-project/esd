@@ -973,9 +973,9 @@ analyze_log() {
     local log_name=$1
     local log_command=$2
     local filter_command=$3
-    local super_danger="(i/o\s*(error|fail|fault)|EXT4-fs error|Input/output error|memory corruption)"
-    local danger="(Too many open files|Remounting filesystem read-only|Corrupted data|Buffer I/O error|XFS.{1,20}Corruption|Superblock last mount time is in the future|degraded array|array is degraded|disk failure|Failed to write to block|failed to read/write block|slab corruption)"
-    local warn="(Cannot allocate memory|marked as crashed|Table corruption|Database page corruption|errno: 145|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:|service: Failed)"
+    local super_danger="(i/o\s*(error|fail|fault)|EXT4-fs error|Input/output error|FAILED SMART self-check.+BACK UP DATA NOW!|BACK UP DATA NOW!)"
+    local danger="(FAILED SMART self-check|Too many open files|Remounting filesystem read-only|Corrupted data|Buffer I/O error|XFS.{1,20}Corruption|Superblock last mount time is in the future|degraded array|array is degraded|disk failure|Failed to write to block|failed to read/write block|slab corruption)"
+    local warn="(memory corruption|Cannot allocate memory|marked as crashed|Table corruption|Database page corruption|errno: 145|Segmentation fault|segfault|Failed to allocate memory|Low memory|Out of memory|oom_reaper|link down|SMART error|kernel BUG|EDAC MC0:|service: Failed)"
     local regex_trigger="(${grep_patterns})"
 
     get_log_rows() {
@@ -1017,7 +1017,7 @@ analyze_log() {
                     #echo "line [${line}]"
                     #echo "logsearch [${logsearch}]"
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
-                    output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
+                    output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#(${super_danger})#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig; t end; s#(${danger})#\\x1b[0;31m\\1\\x1b[0m#Ig; t end; s#(${warn})#\\x1b[1;33m\\1\\x1b[0m#Ig; t end; s#(${regex_trigger})#\\x1b[0;97m\\1\\x1b[0m#Ig; :end")
                     printf "%b\n" "${output}"
                 done
                 echo -ne "\033[2K\r                                               " >&2
@@ -1045,7 +1045,7 @@ analyze_log() {
                     #echo "line [${line}]"
                     #echo "logsearch [${logsearch}]"
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
-                    output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
+                    output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#(${super_danger})#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig; t end; s#(${danger})#\\x1b[0;31m\\1\\x1b[0m#Ig; t end; s#(${warn})#\\x1b[1;33m\\1\\x1b[0m#Ig; t end; s#(${regex_trigger})#\\x1b[0;97m\\1\\x1b[0m#Ig; :end")
                     printf "%b\n" "${output}"
                 done
                 echo -ne "\033[2K\r                                               " >&2
@@ -1081,7 +1081,7 @@ analyze_log() {
                     #echo "line [${line}]"
                     #echo "logsearch [${logsearch}]"
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
-                    output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
+                    output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#(${super_danger})#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig; t end; s#(${danger})#\\x1b[0;31m\\1\\x1b[0m#Ig; t end; s#(${warn})#\\x1b[1;33m\\1\\x1b[0m#Ig; t end; s#(${regex_trigger})#\\x1b[0;97m\\1\\x1b[0m#Ig; :end")
                     printf "%b\n" "${output}"
                 done
                 echo -ne "\033[2K\r                                               " >&2
@@ -1109,7 +1109,7 @@ analyze_log() {
                     #echo "line [${line}]"
                     #echo "logsearch [${logsearch}]"
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
-                    output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#${regex_trigger}#\\x1b[0;97m\\1\\x1b[0m#Ig; s#${warn}#\\x1b[1;33m\\1\\x1b[0m#Ig; s#${danger}#\\x1b[0;31m\\1\\x1b[0m#Ig; s#${super_danger}#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig")
+                    output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#(${super_danger})#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig; t end; s#(${danger})#\\x1b[0;31m\\1\\x1b[0m#Ig; t end; s#(${warn})#\\x1b[1;33m\\1\\x1b[0m#Ig; t end; s#(${regex_trigger})#\\x1b[0;97m\\1\\x1b[0m#Ig; :end")
                     printf "%b\n" "${output}"
                 done
                 echo -ne "\033[2K\r                                               " >&2
