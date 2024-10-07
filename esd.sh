@@ -136,7 +136,7 @@ fi
 if echo "${rip}" | grep -qE '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'; then 
     echo -e "The \033[3mremote${NC} IPv4 address of this server is [\033[38;5;51m${rip}${NC}]\n";
     echo_ip_notfound() {
-        echo -e "    IP \033[38;5;51m${rip}${NC} is not found on the local interfaces."
+        echo -e "    \033[38;5;168mIP \033[38;5;51m${rip}\033[38;5;168m is not found on the local interfaces.${NC}"
     }
     if type ip >/dev/null 2>&1; then
         if ! ip a | grep -E 'inet(6)? ' | awk '{print $2}'| awk -F '/' '{print $1}' | grep -q "${rip}"; then 
@@ -712,7 +712,14 @@ elif type apachectl >/dev/null 2>&1; then
 else
     echo -e "Apache test \t\t\t${DARK_GRAY}[N/A]${NC}"
 fi
-
+if [ -e /proc/user_beancounters ]; then
+    if [ $(cat /proc/user_beancounters | grep -v failcnt | grep -v Version | grep -vE " 0$" | wc -l) -gt "0" ]; then
+        echo -e "/proc/user_beancounters \t${RED}[ATTENTION]${NC}"
+        echo -e "${DARK_YELLOW}/proc/user_beancounters fails detected:${NC}"; cat /proc/user_beancounters | grep -v failcnt | grep -v Version | grep -vE " 0$";
+    else
+        echo -e "/proc/user_beancounters \t${GREEN}[OK]${NC}"
+    fi
+fi
 
 
 
@@ -732,23 +739,22 @@ ps -eo %cpu,pid,args --sort=-%cpu | grep -v 'ps -eo %cpu,pid,args --sort=-%cpu' 
     for (i=3; i<=NF; i++) cmd = cmd $i " ";
     if (length(cmd) > 172) cmd = substr(cmd, 1, 169) "...";
 
-    # Разбор команды и аргументов без использования split
     cmd_name = "";
     args = "";
-    first_space = index(cmd, " ");  # ищем первое пространство
+    first_space = index(cmd, " ");
 
     if (first_space > 0) {
-        cmd_name = substr(cmd, 1, first_space - 1);  # команда до первого пробела
-        args = substr(cmd, first_space + 1);  # все остальное - аргументы
+        cmd_name = substr(cmd, 1, first_space - 1);
+        args = substr(cmd, first_space + 1);
     } else {
-        cmd_name = cmd;  # если нет пробела, то вся строка - команда
+        cmd_name = cmd;
     }
 
     if (length(args) > 0) {
-        args = substr(args, 1, length(args) - 1);  # удаляем последний пробел
-        cmd = cmd_name " \033[1;30m" args "\033[0m";  # добавляем цвет
+        args = substr(args, 1, length(args) - 1);
+        cmd = cmd_name " \033[1;30m" args "\033[0m";
     } else {
-        cmd = cmd_name;  # если нет аргументов
+        cmd = cmd_name;
     }
 
     printf "%6.2f%%   %d   %s\n", $1, $2, cmd
@@ -760,24 +766,22 @@ ps -eo %mem,pid,args --sort=-%mem | awk 'NR > 1 {
     cmd = ""; 
     for (i=3; i<=NF; i++) cmd = cmd $i " "; 
     if (length(cmd) > 172) cmd = substr(cmd, 1, 169) "...";
-
-    # Разбор команды и аргументов без использования split
     cmd_name = "";
     args = "";
-    first_space = index(cmd, " ");  # ищем первое пространство
+    first_space = index(cmd, " ");
 
     if (first_space > 0) {
-        cmd_name = substr(cmd, 1, first_space - 1);  # команда до первого пробела
-        args = substr(cmd, first_space + 1);  # все остальное - аргументы
+        cmd_name = substr(cmd, 1, first_space - 1);
+        args = substr(cmd, first_space + 1);
     } else {
-        cmd_name = cmd;  # если нет пробела, то вся строка - команда
+        cmd_name = cmd;
     }
 
     if (length(args) > 0) {
-        args = substr(args, 1, length(args) - 1);  # удаляем последний пробел
-        cmd = cmd_name " \033[1;30m" args "\033[0m";  # добавляем цвет
+        args = substr(args, 1, length(args) - 1);
+        cmd = cmd_name " \033[1;30m" args "\033[0m";
     } else {
-        cmd = cmd_name;  # если нет аргументов
+        cmd = cmd_name;
     }
 
     printf "%6.2f%%   %d   %s\n", $1, $2, cmd
