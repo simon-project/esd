@@ -790,7 +790,6 @@ ps -eo %mem,pid,args --sort=-%mem | awk 'NR > 1 {
 
 check_disk_load() {
     if ! type atop >/dev/null 2>&1; then
-        echo "atop не найден. Пропускаем проверку."
         return
     fi
     atop_output=$(timeout 7 atop -d 1 1); if [[ ! -n "${atop_output}" ]]; then echo "atop error"; fi
