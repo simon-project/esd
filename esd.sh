@@ -792,8 +792,7 @@ check_disk_load() {
     if ! type atop >/dev/null 2>&1; then
         return
     fi
-    atop_output=$(timeout 7 atop -d 1 1); if [[ ! -n "${atop_output}" ]]; then echo "atop error"; fi
-
+    atop_output=$(timeout 7 atop -d 1 1); 
     if [[ ! -n "${atop_output}" ]]; then
         echo -e "${RED}ERROR:${NC} failed to start atop with timeout 7 secounds. Probably atop is broken or abother problem.";
         return
