@@ -29,13 +29,13 @@ if [[ "${LNS}" =~ ^[0-9]+$ ]]; then
 else
     export tail_depth="10000"
 fi
-if [[ "${LOG_TAIL}" =~ ^[0-9]+$ ]]; then
-    export log_tail="${LOG_TAIL}"
+if [[ "${TAIL_LOG}" =~ ^[0-9]+$ ]]; then
+    export log_tail="${TAIL_LOG}"
 else
     export log_tail="30"
 fi
-if [[ "${DEBUG_SMARTCTL}" =~ ^[0-9]+$ ]]; then
-    export debug_smartctl="${DEBUG_SMARTCTL}"
+if [[ "${SMARTCTL_DEBUG}" =~ ^[0-9]+$ ]]; then
+    export debug_smartctl="${SMARTCTL_DEBUG}"
 else
     export debug_smartctl="0"
 fi
@@ -43,11 +43,16 @@ fi
 if ! type bc &>/dev/null; then
     bc() {
         local input="$1"
-        local num1=$(echo "$input" | awk '{print $1}')
-        local operator=$(echo "$input" | awk '{print $2}')
-        local num2=$(echo "$input" | awk '{print $3}')
-        local int_part1=${num1%%.*}
-        local int_part2=${num2%%.*}
+        local num1;
+        local operator;
+        local num2;
+        local int_part1;
+        local int_part2;
+        num1=$(echo "$input" | awk '{print $1}')
+        operator=$(echo "$input" | awk '{print $2}')
+        num2=$(echo "$input" | awk '{print $3}')
+        int_part1=${num1%%.*}
+        int_part2=${num2%%.*}
         case "$operator" in
             ">")
                 [[ $int_part1 -gt $int_part2 ]] && echo 1 || echo 0
@@ -165,12 +170,12 @@ isplogin() {
     local CPIP="$1"
     FVK=$(date | md5sum | head -c16);
     if [ -f "/usr/local/mgr5/sbin/mgrctl" ]; then
-        /usr/local/mgr5/sbin/mgrctl -m ispmgr session.newkey username=root key=$FVK sok=o;
+        /usr/local/mgr5/sbin/mgrctl -m ispmgr session.newkey username=root key="$FVK" sok=o;
         echo "https://${CPIP}:1500/manager/ispmgr?func=auth&username=root&key=${FVK}&checkcookie=no";
         echo "https://${CPIP}/manager/ispmgr?func=auth&username=root&key=${FVK}&checkcookie=no";
     fi;
     if [ -f "/usr/local/ispmgr/sbin/mgrctl" ]; then
-        /usr/local/ispmgr/sbin/mgrctl -m ispmgr session.newkey username=root key=$FVK sok=o; 
+        /usr/local/ispmgr/sbin/mgrctl -m ispmgr session.newkey username=root key="$FVK" sok=o; 
         echo "https://${CPIP}:1500/manager/ispmgr?func=auth&username=root&key=${FVK}&checkcookie=no";
         echo "https://${CPIP}/manager/ispmgr?func=auth&username=root&key=${FVK}&checkcookie=no"; 
     fi;
@@ -182,11 +187,11 @@ fp2login() {
 }
 vestalogin() {
     local CPIP="$1"
-    echo $(curl -s -X POST "https://${CPIP}:8083/api/" -d "user=admin&password=$(grep 'PASSWORD=' /usr/local/vesta/conf/mysql.conf | awk -F\' '{print $2}')")
+    curl -s -X POST "https://${CPIP}:8083/api/" -d "user=admin&password=$(grep 'PASSWORD=' /usr/local/vesta/conf/mysql.conf | awk -F\' '{print $2}')"
 }
 dalogin() {
     local CPIP="$1"
-    echo $(curl -s --request POST "https://${CPIP}:2222/CMD_LOGIN?username=admin" --data "passwd=$(cat /usr/local/directadmin/scripts/setup.txt | grep adminpass= | cut -d= -f2)" | grep -oP '(?<=Location: ).*')
+    curl -s --request POST "https://${CPIP}:2222/CMD_LOGIN?username=admin" --data "passwd=$(grep adminpass= /usr/local/directadmin/scripts/setup.txt | cut -d= -f2)" | grep -oP '(?<=Location: ).*'
 }
 fplogin() {
     local CPIP="$1"
@@ -207,7 +212,7 @@ fplogin() {
 }
 whmlogin() {
     local CPIP="$1"
-    echo $(whmapi1 create_user_session user=root service=cpaneld | grep -oP '(?<=url: ).*')
+    whmapi1 create_user_session user=root service=cpaneld | grep -oP '(?<=url: ).*'
 }
 detect_panel() {
     directories=(fastpanel fastpanel2 mgr5 ispmgr cpanel vesta directadmin)
@@ -281,8 +286,10 @@ df_inodes_output=$(df -i --exclude-type=squashfs --exclude-type=tmpfs --exclude-
 
 function check_usage() {
     local line="$1"
-    local usage=$(echo "$line" | awk '{print $5}' | sed 's/%//')
-    local mount=$(echo "$line" | awk '{print $6}')
+    local usage
+    local mount
+    usage=$(echo "$line" | awk '{print $5}' | sed 's/%//')
+    mount=$(echo "$line" | awk '{print $6}')
     if [[ "${usage}" != "-" ]]; then
         if [[ "$usage" -ge 90 ]]; then
             echo -e "${DARK_YELLOW}Disk space|inodes \t${RED}[ATTENTION]${NC}"
@@ -300,7 +307,7 @@ echo "$df_output" | tail -n +2 | while read -r line; do
     check_usage "$line"
 done
 
-if [[ ! $(echo "$df_output" | awk '{print $5}' | sed 's/%//' | grep -q '[^0-9]*90') ]]; then
+if echo "$df_output" | awk '{print $5}' | sed 's/%//' | grep -q '[^0-9]*90'; then
     echo -e "Disk space \t\t\t${GREEN}[OK]${NC}"
 fi
 
@@ -309,7 +316,7 @@ echo "$df_inodes_output" | tail -n +2 | while read -r line; do
     check_usage "$line"
 done
 
-if [[ ! $(echo "$df_inodes_output" | awk '{print $5}' | sed 's/%//' | grep -q '[^0-9]*90') ]]; then
+if echo "$df_inodes_output" | awk '{print $5}' | sed 's/%//' | grep -q '[^0-9]*90'; then
     echo -e "Disk Inodes \t\t\t${GREEN}[OK]${NC}"
 fi
 
@@ -384,9 +391,11 @@ check_value() {
 }
 
 check_disks_and_controllers() {
-    local disknvme="no"
+    local disknvme
+    disknvme="no"
     if type smartctl > /dev/null 2>&1; then
-        disks=$(ls /dev/sd* /dev/hd* /dev/nvme* tests/sd* 2>/dev/null | grep -E 'tests/sd[a-z][0-9]+$|/dev/sd[a-z]+$|/dev/hd[a-z]+$|/dev/nvme[0-9]n[0-9]$')
+        lsdisk=$(ls /dev/sd* /dev/hd* /dev/nvme* tests/sd* 2>/dev/null)
+        disks=$(echo "$lsdisk" | grep -E 'tests/sd[a-z][0-9]+$|/dev/sd[a-z]+$|/dev/hd[a-z]+$|/dev/nvme[0-9]n[0-9]$')
         for disk in $disks; do
             if [[ "${debug_smartctl}" -gt "0" ]]; then echo -e "\n------------------------------------------------------------\nDEBUG 1: Disk: [${disk}]\n"; fi
             if [[ "${disk}" == /dev/nvme* ]]; then
@@ -445,7 +454,7 @@ check_disks_and_controllers() {
             errors=$(check_value "Current_Pending_Sector" "${Current_Pending_Sector}" 200 "$errors")
             errors=$(check_value "Reported_Uncorrect" "${Reported_Uncorrect}" 200 "$errors")
 
-            if [[ ! -n "${hours_value}" ]]; then
+            if [[ -z "${hours_value}" ]]; then
                 hours_value="0"
                 if [[ "${debug_smartctl}" -gt "2" ]]; then echo -e "\nDEBUG 3: no hours_value, so set hours_value to 0\n"; fi
             fi
@@ -501,8 +510,10 @@ check_disks_and_controllers() {
             fi
         done
     else
-        if ls /dev/sd* /dev/hd* /dev/nvme* 2>/dev/null | grep -q .; then
-            echo -e "\033[38;5;242msmartctl not found${NC}"
+        if type compgen >/dev/null 2>&1; then
+            if compgen -G "/dev/sd*" > /dev/null || compgen -G "/dev/hd*" > /dev/null || compgen -G "/dev/nvme*" > /dev/null; then
+                echo -e "\033[38;5;242msmartctl not found${NC}"
+            fi
         fi
         return
     fi
@@ -541,12 +552,12 @@ check_swap_ps() {
     current_line=0
     ps_out=$(ps -e -o pid --no-headers)
     ps_rows=$(echo "${ps_out}" | wc -l)
-    echo -e "${ps_out}" | while read pid; do
+    echo -e "${ps_out}" | while read -r pid; do
         ((current_line++))
         percent=$(( 100 * current_line / ps_rows ))
         echo -ne "\033[2K\rProcessing swap: $percent%" >&2
-        comm=$(awk '/^Name:/{print $2}' /proc/$pid/status 2>/dev/null)  # получаем имя процесса через /proc/$pid/status
-        awk '/VmSwap/{print $2 " " "'$comm'"}' /proc/$pid/status 2>/dev/null;
+        comm=$(awk '/^Name:/{print $2}' "/proc/${pid}/status" 2>/dev/null)
+        awk '/VmSwap/{print $2 " " "'"$comm"'"}' "/proc/$pid/status" 2>/dev/null;
     done | awk '{proc[$2] += $1} END {for (p in proc) printf "        %.2f MB\t\t%s\n", proc[p]/1024, p}' | sort -nr | head -10
     echo -ne "\033[2K\r                                               " >&2
     echo -ne "\033[2K\r" >&2
@@ -554,16 +565,23 @@ check_swap_ps() {
 }
 
 check_ram_swap() {
-    local min_free_mem=50
-    local min_available_mem=200
-    local max_swap_usage=100
+    local min_free_mem
+    local min_available_mem
+    local max_swap_usage
+    local free_mem
+    local available_mem
+    local used_swap
+    local result
 
+    min_free_mem=50
+    min_available_mem=200
+    max_swap_usage=100
     # Get current values
-    local free_mem=$(free -m | awk '/^Mem:/ {print $4}')
-    local available_mem=$(free -m | awk '/^Mem:/ {print $7}')
-    local used_swap=$(free -m | awk '/^Swap:/ {print $3}')
+    free_mem=$(free -m | awk '/^Mem:/ {print $4}')
+    available_mem=$(free -m | awk '/^Mem:/ {print $7}')
+    used_swap=$(free -m | awk '/^Swap:/ {print $3}')
 
-    local result=""
+    result=""
     if (( free_mem < min_free_mem )); then
         result+="    ${DARK_YELLOW}Warning: Low free memory (${YELLOW}${free_mem}MB${NC})\n"
     fi
@@ -589,14 +607,19 @@ fi
 
 # Large logs
 check_log_dir() {
-    local path=$1
-    local depth=$2
-    local size_threshold=${3:-50M}
-    find "$path" -maxdepth "$depth" -type f -size +$size_threshold ! -name "*.gz" 2>/dev/null
+    local path
+    local depth
+    local size_threshold
+    path=$1
+    depth=$2
+    size_threshold=${3:-50M}
+    find "$path" -maxdepth "$depth" -type f -size +"$size_threshold" ! -name "*.gz" 2>/dev/null
 }
 find_large_logs() {
-    local size_threshold=${1:-50M}
-    local paths=(
+    local size_threshold
+    local paths
+    size_threshold=${1:-50M}
+    paths=(
         "/var/log/ 3"
         "/var/www/*/data/logs/ 1"
         "/var/www/httpd-logs/ 1"
@@ -604,12 +627,17 @@ find_large_logs() {
     )
     local result=""
     for path_info in "${paths[@]}"; do
-        local path=$(echo $path_info | awk '{print $1}')
-        local depth=$(echo $path_info | awk '{print $2}')
-        local log_files=$(check_log_dir "$path" "$depth" "$size_threshold")
+        local path
+        path=
+        local depth
+        local log_files
+        path=$(echo "$path_info" | awk '{print $1}')
+        depth=$(echo "$path_info" | awk '{print $2}')
+        log_files=$(check_log_dir "$path" "$depth" "$size_threshold")
         if [[ -n "$log_files" ]]; then
             while IFS= read -r file; do
-                local file_size=$(du -h "$file" | awk '{print $1}')
+                local file_size
+                file_size=$(du -h "$file" | awk '{print $1}')
                 result+="    ${DARK_YELLOW}$file_size${NC} \t $file"$'\n'
             done <<< "$log_files"
         fi
@@ -630,16 +658,20 @@ else
 fi
 
 check_lastlogs() {
-    local size_limit=${1:-50}
+    local size_limit
+    local size_limit_bytes
+    size_limit=${1:-50}
     if [[ $size_limit == *M ]]; then
         size_limit=${size_limit%M}
     fi
     #local size_limit_bytes=$((size_limit * 1024 * 1024))  # Convert MB to bytes
-    local size_limit_bytes=$(echo "$size_limit * 1024 * 1024" | bc)
+    size_limit_bytes=$(echo "$size_limit * 1024 * 1024" | bc)
     for file in /var/log/[a-z]tmp; do
         if [[ -f "$file" ]]; then
-            local file_size=$(stat -c%s "$file")  # Get file size in bytes
-            local file_size_mb=$(echo "scale=2; $file_size / 1024 / 1024" | bc)
+            local file_size
+            local file_size_mb
+            file_size=$(stat -c%s "$file")  # Get file size in bytes
+            file_size_mb=$(echo "scale=2; $file_size / 1024 / 1024" | bc)
             if [[ $file_size_mb == .* ]]; then
                 file_size_mb="0$file_size_mb"
             fi
@@ -664,11 +696,11 @@ fi
 # Failed services
 if type systemctl >/dev/null 2>&1; then
     if systemctl list-units --state=failed &>/dev/null; then
-        failed_list=$(systemctl list-units --state=failed | grep -vE 'LOAD[ \t]{1,12}=[ \t]{1,12}Reflects|ACTIVE[ \t]{1,12}=[ \t]{1,12}The[ \t]{1,12}high|SUB[ \t]{1,12}=[ \t]{1,12}The[ \t]{1,12}low')
+        failed_list=$(systemctl list-units --state=failed | grep -vE '(LOAD|ACTIVE|SUB).+(Reflects.+unit.+loaded|high-level.+unit.+SUB|low-level.+unit.+unit.+type)')
     else
-        failed_list=$(systemctl list-units --all | grep "failed" | grep -vE 'LOAD[ \t]{1,12}=[ \t]{1,12}Reflects|ACTIVE[ \t]{1,12}=[ \t]{1,12}The[ \t]{1,12}high|SUB[ \t]{1,12}=[ \t]{1,12}The[ \t]{1,12}low')
+        failed_list=$(systemctl list-units --all | grep "failed" | grep -vE '(LOAD|ACTIVE|SUB).+(Reflects.+unit.+loaded|high-level.+unit.+SUB|low-level.+unit.+unit.+type)')
     fi
-    if [[ $(echo "${failed_list}" | grep -E '0[ \t]+loaded units listed' | wc -l) -ne "1" && $(echo "${failed_list}"| grep -vE "^$" | wc -l) -gt "0" ]]; then
+    if [[ $(echo "${failed_list}" | grep -cE '0[ \t]+loaded units listed') -ne "1" && $(echo "${failed_list}"| grep -cvE "^$") -gt "0" ]]; then
         echo -e "Failed systemd services \t${RED}[FOUND]${NC}"
         echo -e "\033[38;5;88m${failed_list}${NC}\n"
     else
@@ -681,7 +713,7 @@ fi
 # Check nginx/apache
 if type nginx >/dev/null 2>&1; then
     nginx_test=$(nginx -t 2>&1)
-    nginx_status=$(echo "${nginx_test}" |grep -i 'test failed' | wc -l)
+    nginx_status=$(echo "${nginx_test}" |grep -ci 'test failed')
     if [[ "${nginx_status}" -ne "0" ]]; then
         echo -e "Nginx test \t\t\t${RED}[FAILED]${NC}"
         echo -e "${nginx_test}\n"
@@ -693,7 +725,7 @@ else
 fi
 if type apache2ctl >/dev/null 2>&1; then
     apache2_test=$(apache2ctl -t 2>&1)
-    apache2_status=$(echo "${apache2_test}" |grep -i 'Syntax OK' | wc -l)
+    apache2_status=$(echo "${apache2_test}" |grep -ci 'Syntax OK')
     if [[ "${apache2_status}" -lt "1" ]]; then
         echo -e "Apache2 check \t\t\t${RED}[FAILED]${NC}"
         echo -e "${apache2_test}\n"
@@ -702,7 +734,7 @@ if type apache2ctl >/dev/null 2>&1; then
     fi
 elif type apachectl >/dev/null 2>&1; then
     apache_test=$(apachectl -t 2>&1)
-    apache_status=$(echo "${apache_test}" |grep -i 'Syntax OK' | wc -l)
+    apache_status=$(echo "${apache_test}" |grep -ci 'Syntax OK')
     if [[ "${apache_status}" -lt "1" ]]; then
         echo -e "Apache check \t\t\t${RED}[FAILED]${NC}"
         echo -e "${apache_test}\n"
@@ -713,9 +745,9 @@ else
     echo -e "Apache test \t\t\t${DARK_GRAY}[N/A]${NC}"
 fi
 if [ -e /proc/user_beancounters ]; then
-    if [ $(cat /proc/user_beancounters | grep -v failcnt | grep -v Version | grep -vE " 0$" | wc -l) -gt "0" ]; then
+    if [ "$(grep -v failcnt /proc/user_beancounters | grep -v Version | grep -cvE ' 0$')" -gt "0" ]; then
         echo -e "/proc/user_beancounters \t${RED}[ATTENTION]${NC}"
-        echo -e "${DARK_YELLOW}/proc/user_beancounters fails detected:${NC}"; cat /proc/user_beancounters | grep -v failcnt | grep -v Version | grep -vE " 0$";
+        echo -e "${DARK_YELLOW}/proc/user_beancounters fails detected:${NC}"; grep -v failcnt /proc/user_beancounters  | grep -v Version | grep -vE " 0$";
     else
         echo -e "/proc/user_beancounters \t${GREEN}[OK]${NC}"
     fi
@@ -734,7 +766,10 @@ echo -e "\n\033[38;5;109m\033[3m Remember - this application doesn't replace you
 for i in {16..51}; do echo -ne "\033[38;5;${i}m.\\033[0m"; sleep 0.05; done
 echo -e "\nMy PID is: $BASHPID"
 echo -e "\n${bg_bright_black}\033[38;5;253mTOP 5 processess by \033[38;5;43mCPU usage:${NC}"
-ps -eo %cpu,pid,args --sort=-%cpu | grep -v 'ps -eo %cpu,pid,args --sort=-%cpu' | awk 'NR > 1 {
+strip_ps() {
+    grep -v 'ps -eo %cpu,pid,args --sort=-%cpu'
+}
+ps -eo %cpu,pid,args --sort=-%cpu | strip_ps | awk 'NR > 1 {
     cmd = "";
     for (i=3; i<=NF; i++) cmd = cmd $i " ";
     if (length(cmd) > 172) cmd = substr(cmd, 1, 169) "...";
@@ -793,7 +828,7 @@ check_disk_load() {
         return
     fi
     atop_output=$(timeout 7 atop -d 1 1); 
-    if [[ ! -n "${atop_output}" ]]; then
+    if [[ -z "${atop_output}" ]]; then
         echo -e "${RED}ERROR:${NC} failed to start atop with timeout 7 secounds. Probably atop is broken or another problem.";
         return
     fi
@@ -999,9 +1034,9 @@ analyze_log() {
         log_file=$(echo "${log_command}" | awk '{print $3}')  # Get filename from tail
         if [[ -f "$log_file" ]]; then  # Check file exist
             echo -e "\n${bg_bright_black}\033[38;5;253mAnalyzing ${log_name}:${NC}"
-            export current_line=0
+            current_line=0
             if [[ -n $filter_command ]]; then
-                eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}" | while IFS= read -r line; do
+                while IFS= read -r line; do
                     ((current_line++))
                     percent=$(( 100 * current_line / log_tail ))
                     echo -ne "\033[2K\rProcessing ${log_name}: $percent%" >&2
@@ -1025,12 +1060,12 @@ analyze_log() {
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#(${super_danger})#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig; t end; s#(${danger})#\\x1b[0;31m\\1\\x1b[0m#Ig; t end; s#(${warn})#\\x1b[1;33m\\1\\x1b[0m#Ig; t end; s#(${regex_trigger})#\\x1b[0;97m\\1\\x1b[0m#Ig; :end")
                     printf "%b\n" "${output}"
-                done
+                done < <(eval "$log_command | $filter_command" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}")
                 echo -ne "\033[2K\r                                               " >&2
                 echo -ne "\033[2K\r" >&2
             else
-                $log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}" | while IFS= read -r line; do
-                    ((current_line++))  
+                while IFS= read -r line; do
+                    ((current_line++))
                     percent=$(( 100 * current_line / log_tail ))
                     echo -ne "\033[2K\rProcessing ${log_name}: $percent%" >&2
                     logcnt=$(echo "${line}" | awk '{print $1}')
@@ -1053,7 +1088,7 @@ analyze_log() {
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#(${super_danger})#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig; t end; s#(${danger})#\\x1b[0;31m\\1\\x1b[0m#Ig; t end; s#(${warn})#\\x1b[1;33m\\1\\x1b[0m#Ig; t end; s#(${regex_trigger})#\\x1b[0;97m\\1\\x1b[0m#Ig; :end")
                     printf "%b\n" "${output}"
-                done
+                done < <($log_command | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}")
                 echo -ne "\033[2K\r                                               " >&2
                 echo -ne "\033[2K\r" >&2
             fi | get_log_rows | sort_by_date
@@ -1061,11 +1096,11 @@ analyze_log() {
     else
         # If command is not tail, check that command available in system
         command=$(echo "${log_command}" | awk '{print $1}')
-        if type $command > /dev/null 2>&1; then #check command available
-            export current_line=0
+        if type "$command" > /dev/null 2>&1; then #check command available
+            current_line=0
             echo -e "\n${bg_bright_black}\033[38;5;253mAnalyzing ${log_name}:${NC}"
             if [[ -n $filter_command ]]; then
-                eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}" | while IFS= read -r line; do
+                while IFS= read -r line; do
                     ((current_line++))  
                     percent=$(( 100 * current_line / log_tail ))
                     echo -ne "\033[2K\rProcessing ${log_name}: $percent%" >&2
@@ -1089,11 +1124,11 @@ analyze_log() {
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#(${super_danger})#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig; t end; s#(${danger})#\\x1b[0;31m\\1\\x1b[0m#Ig; t end; s#(${warn})#\\x1b[1;33m\\1\\x1b[0m#Ig; t end; s#(${regex_trigger})#\\x1b[0;97m\\1\\x1b[0m#Ig; :end")
                     printf "%b\n" "${output}"
-                done
+                done < <(eval "$log_command | $filter_command" | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}")
                 echo -ne "\033[2K\r                                               " >&2
                 echo -ne "\033[2K\r" >&2
             else
-                $log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}" | while IFS= read -r line; do
+                while IFS= read -r line; do
                     ((current_line++))  
                     percent=$(( 100 * current_line / log_tail ))
                     echo -ne "\033[2K\rProcessing ${log_name}: $percent%" >&2
@@ -1117,7 +1152,7 @@ analyze_log() {
                     echo -ne "    [${cntcolor}${logcnt}${NC}] "
                     output=$($log_command | grep -F "${logsearch}" | tail -1 |awk '{s=substr($0,1,512); if(length($0)>512) s=s"…"; print s}' | sed -E "s#(${super_danger})#\\x1b[1;37m\\\x1b[41m\\1\\x1b[0m#Ig; t end; s#(${danger})#\\x1b[0;31m\\1\\x1b[0m#Ig; t end; s#(${warn})#\\x1b[1;33m\\1\\x1b[0m#Ig; t end; s#(${regex_trigger})#\\x1b[0;97m\\1\\x1b[0m#Ig; :end")
                     printf "%b\n" "${output}"
-                done
+                done < <($log_command | tail "-${tail_depth}" | grep -iE "$grep_patterns" | grep -vE "$exclude_patterns" | strip_log | sort | uniq -c | sort -nk1 | tail -"${log_tail}")
                 echo -ne "\033[2K\r                                               " >&2
                 echo -ne "\033[2K\r" >&2
             fi | get_log_rows | sort_by_date
@@ -1125,7 +1160,7 @@ analyze_log() {
     fi
 }
 
-tail_small_depth=$(( ${tail_depth} / 4 ))
+tail_small_depth=$(( tail_depth / 4 ))
 
 # Check logs
 analyze_log "syslog" "tail -${tail_depth} /var/log/syslog" "grep -vE 'auth failed|no auth attempts'"
@@ -1149,6 +1184,6 @@ for tl in /var/log/php*fpm.log; do
 done
 
 analyze_log "TESTLOG" "tail -${tail_small_depth} tests/testlog"
-echo ""
+echo -e "${DARK_GREEN}Done.${NC}"
 
 #esdfulldwnldok
