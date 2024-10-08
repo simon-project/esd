@@ -794,7 +794,7 @@ check_disk_load() {
     fi
     atop_output=$(timeout 7 atop -d 1 1); 
     if [[ ! -n "${atop_output}" ]]; then
-        echo -e "${RED}ERROR:${NC} failed to start atop with timeout 7 secounds. Probably atop is broken or abother problem.";
+        echo -e "${RED}ERROR:${NC} failed to start atop with timeout 7 secounds. Probably atop is broken or another problem.";
         return
     fi
     atop_output=$(echo "$atop_output" | grep -E '^[ \t]*[0-9]+[ \t]+[-]?[^%]+[0-9]{1,3}%' | grep -vE '[ \t]+0%')
