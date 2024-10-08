@@ -672,7 +672,7 @@ if type systemctl >/dev/null 2>&1; then
         echo -e "Failed systemd services \t${RED}[FOUND]${NC}"
         echo -e "\033[38;5;88m${failed_list}${NC}\n"
     else
-           echo -e "Failed systemd services \t${GREEN}[OK]${NC}"
+            echo -e "Failed systemd services \t${GREEN}[OK]${NC}"
     fi
 else
     echo -e "Failed systemd services \t${DARK_GRAY}[N/A]${NC}"
@@ -793,8 +793,12 @@ check_disk_load() {
         echo "atop не найден. Пропускаем проверку."
         return
     fi
+    atop_output=$(timeout 7 atop -d 1 1); if [[ ! -n "${atop_output}" ]]; then echo "atop error"; fi
 
-    atop_output=$(atop -d 1 1)
+    if [[ ! -n "${atop_output}" ]]; then
+        echo "${RED}ERROR:${NC} failed to start atop with timeout 7 secounds. Probably atop is broken or abother problem.";
+        return
+    fi
     atop_output=$(echo "$atop_output" | grep -E '^[ \t]*[0-9]+[ \t]+[-]?[^%]+[0-9]{1,3}%' | grep -vE '[ \t]+0%')
     atop_rows=$(echo "$atop_output" | wc -l)
 
