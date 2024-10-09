@@ -936,6 +936,7 @@ exclude_patterns="Scanning for low memory corruption every [0-9]{1,5} seconds$|S
 
 strip_log() {
     sed -E '
+        s/^.+(Temperature_Celsius[ \t]{1,7}changed[ \t]{1,7}from).+/\1/
         s/^.+(ERROR[ \t]{1,7}Cannot[ \t]{1,7}reissue|can[ \t]{1,7}not[ \t]{1,7}be[ \t]{1,7}issued[ \t]{1,7}as[ \t]{1,7}URL).+/\1/
         s/^.+routines:tls_parse_ctos_key_share:bad.+/routines:tls_parse_ctos_key_share:bad/
         s/^[^\[]+\[[^\]+\]([^\[]+)/\1/
