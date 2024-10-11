@@ -380,7 +380,7 @@ check_value() {
     if [[ "$val" =~ ^[0-9]+$ ]]; then
         if [[ "$val" -ge "$max" ]]; then
             if [[ -n "$desc" ]]; then
-                errors=$(echo -e "${DARK_YELLOW}${name} is ${YELLOW}${val}${NC}\n\t- ${desc}\n${errors}")
+                errors=$(echo -e "${DARK_YELLOW}${name} is ${YELLOW}${val}${NC}\t- ${desc}\n${errors}")
             else
                 errors=$(echo -e "${DARK_YELLOW}${name} is ${YELLOW}${val}${NC}\n${errors}")
             fi
