@@ -477,9 +477,9 @@ check_disks_and_controllers() {
                 fi
                 if [[ "${hdelay}" -gt "168" ]]; then
                     if [[ "${disknvme}" == "yes" && "${hours_value}" == "0" ]]; then
-                        errors=$(echo -e "\033[38;5;55mCan't check when the S.M.A.R.T. tests were last run.${NC}")
+                        errors=$(echo -e "\033[38;5;55mCan't check when the S.M.A.R.T. tests were last run.${NC}\n${errors}")
                     else
-                        errors=$(echo -e "${RED}No disk monitoring?${NC} It seems that the last ${WHITE}${disk}${NC} smartctl test was run ${RED}${hdelay}${NC} hours ago!")
+                        errors=$(echo -e "${RED}No disk monitoring?${NC} It seems that the last ${WHITE}${disk}${NC} smartctl test was run ${RED}${hdelay}${NC} hours ago!\n${errors}")
                     fi
                 fi
             fi
