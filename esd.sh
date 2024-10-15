@@ -44,22 +44,24 @@ fi
 if ! type bc &>/dev/null; then
     bc() {
         echo "alternate bc runned" >&2
-        local input="$@"
         local num1
         local operator
         local num2
         local int_part1
         local int_part2
 
-        # Если первый аргумент -l, убираем его
+
+        echo "1:${1} 2:${2} 3:${3} 4:${4} 5:${5}" >&2
+
+        # Если первый аргумент -l, убираем его и смещаем остальные аргументы
         if [[ "$1" == "-l" ]]; then
-            input="${@:2}"
+            shift
         fi
 
         # Разбор входных данных
-        num1=$(echo "$input" | awk '{print $1}')
-        operator=$(echo "$input" | awk '{print $2}')
-        num2=$(echo "$input" | awk '{print $3}')
+        num1="$1"
+        operator="$2"
+        num2="$3"
 
         # Проверка на пустые значения
         if [[ -z "$num1" || -z "$operator" || -z "$num2" ]]; then

@@ -21,7 +21,7 @@ This command checks if the download is successful before executing the script.
 Additionally, there’s a stricter verification option using md5 - the command:
 
 ```
-curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q 58e656e4f212bec2315e58615f2a564d && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
+curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q 23c7453217eb0f64b365b6092fc9e7bd && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
 ```
 The downside of this approach is the need to update the saved md5-hash in the command whenever the script is updated.
 
@@ -56,7 +56,7 @@ curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-pro
 Также, есть более строгий вариант проверки с использованием md5 - команда:
 
 ```
-curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q 58e656e4f212bec2315e58615f2a564d && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
+curl -H "Cache-Control: no-cache" -s https://raw.githubusercontent.com/simon-project/esd/refs/heads/main/esd.sh  | { content=$(cat); echo "$content" | md5sum | grep -q 23c7453217eb0f64b365b6092fc9e7bd && echo "$content" | bash || echo "MD5 checksum mismatch. Will not be executed."; }
 ```
 
 Минусом данного подхода является необходимость обновлять md5-hash в сохраненной команде при каждом обновлении скрипта.
