@@ -39,11 +39,10 @@ if [[ "${SMARTCTL_DEBUG}" =~ ^[0-9]+$ ]]; then
 else
     export debug_smartctl="0"
 fi
-# No bc
 
+# No bc
 if ! type bc &>/dev/null; then
     bc() {
-        echo "alternate bc runned" >&2
         local input
         local num1
         local operator
@@ -51,26 +50,20 @@ if ! type bc &>/dev/null; then
         local int_part1
         local int_part2
 
-        # Читаем входные данные из стандартного ввода
         read -r input
 
-        # Разбираем входные данные
         num1=$(echo "$input" | awk '{print $1}')
         operator=$(echo "$input" | awk '{print $2}')
         num2=$(echo "$input" | awk '{print $3}')
 
-        # Проверка на пустые значения
         if [[ -z "$num1" || -z "$operator" || -z "$num2" ]]; then
             echo "0"
-            echo "alternate bc is 0, num1 is ${num1}, operator is ${operator}, num2 is ${num2}" >&2
             return
         fi
 
-        # Получение целых частей
         int_part1=${num1%%.*}
         int_part2=${num2%%.*}
 
-        # Выполнение сравнения
         case "$operator" in
             ">")
                 [[ $int_part1 -gt $int_part2 ]] && echo 1 || echo 0
@@ -92,14 +85,10 @@ if ! type bc &>/dev/null; then
                 ;;
             *)
                 echo "0"
-                echo "alternate bc is 0, unknown operator: $operator" >&2
                 ;;
         esac
     }
 fi
-
-
-
 
 # Detect OS
 os_name=$(grep -E "^NAME=" /etc/*release* | cut -d'=' -f2 | tr -d '"')
