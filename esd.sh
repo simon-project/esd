@@ -42,18 +42,32 @@ fi
 # No bc
 if ! type bc &>/dev/null; then
     bc() {
-    echo "alternante bc runned" >&2
+        echo "alternate bc runned" >&2
         local input="$1"
-        local num1;
-        local operator;
-        local num2;
-        local int_part1;
-        local int_part2;
-        num1=$(echo "$input" | awk '{print $2}')
-        operator=$(echo "$input" | awk '{print $3}')
-        num2=$(echo "$input" | awk '{print $4}')
+        local num1
+        local operator
+        local num2
+        local int_part1
+        local int_part2
+
+        input=$(echo "$input" | sed 's/-l //')
+
+        num1=$(echo "$input" | awk '{print $1}')
+        operator=$(echo "$input" | awk '{print $2}')
+        num2=$(echo "$input" | awk '{print $3}')
+
+        if [[ -z "$num1" || -z "$operator" || -z "$num2" ]]; then
+            echo "0"
+            echo "alternate bc is 0, num1 is ${num1}, operator is ${operator}, num2 is ${num2}" >&2
+            return
+        fi
+
         int_part1=${num1%%.*}
         int_part2=${num2%%.*}
+
+        echo "Parsed values: num1=$num1, operator=$operator, num2=$num2" >&2
+        echo "Integer parts: int_part1=$int_part1, int_part2=$int_part2" >&2
+
         case "$operator" in
             ">")
                 [[ $int_part1 -gt $int_part2 ]] && echo 1 || echo 0
@@ -74,11 +88,14 @@ if ! type bc &>/dev/null; then
                 [[ $int_part1 -ne $int_part2 ]] && echo 1 || echo 0
                 ;;
             *)
-                echo "0";  echo "alternante bc is 0, num1 is ${num1}, num2 is ${num2}" >&2
+                echo "0"
+                echo "alternate bc is 0, unknown operator: $operator" >&2
                 ;;
         esac
     }
 fi
+
+
 
 # Detect OS
 os_name=$(grep -E "^NAME=" /etc/*release* | cut -d'=' -f2 | tr -d '"')
