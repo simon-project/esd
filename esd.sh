@@ -54,29 +54,29 @@ if ! type bc &>/dev/null; then
         num2=$(echo "$input" | awk '{print $3}')
         int_part1=${num1%%.*}
         int_part2=${num2%%.*}
-        case "$operator" in
-            ">")
-                [[ $int_part1 -gt $int_part2 ]] && echo 1 || echo 0
-                ;;
-            "<")
-                [[ $int_part1 -lt $int_part2 ]] && echo 1 || echo 0
-                ;;
-            "==")
-                [[ $int_part1 -eq $int_part2 ]] && echo 1 || echo 0
-                ;;
-            ">=")
-                [[ $int_part1 -ge $int_part2 ]] && echo 1 || echo 0
-                ;;
-            "<=")
-                [[ $int_part1 -le $int_part2 ]] && echo 1 || echo 0
-                ;;
-            "!=")
-                [[ $int_part1 -ne $int_part2 ]] && echo 1 || echo 0
-                ;;
-            *)
-                echo "0"
-                ;;
-        esac
+case "$operator" in
+    ">")
+        [[ $int_part1 -gt $int_part2 ]] && return 0 || return 1
+        ;;
+    "<")
+        [[ $int_part1 -lt $int_part2 ]] && return 0 || return 1
+        ;;
+    "==")
+        [[ $int_part1 -eq $int_part2 ]] && return 0 || return 1
+        ;;
+    ">=")
+        [[ $int_part1 -ge $int_part2 ]] && return 0 || return 1
+        ;;
+    "<=")
+        [[ $int_part1 -le $int_part2 ]] && return 0 || return 1
+        ;;
+    "!=")
+        [[ $int_part1 -ne $int_part2 ]] && return 0 || return 1
+        ;;
+    *)
+        return 1 # Неизвестная операция
+        ;;
+esac
     }
 fi
 
@@ -273,9 +273,9 @@ echo ""
 
 # LA
 la="$(uptime | awk -F 'load average: ' '{print $2}' | awk '{print $1}'|sed -E 's#,$##'|sed -E 's#,#.#')"
-if (( $(echo "${la} > 2.01" | bc) == 1 )); then
+if (( $(echo "${la} > 2.01" | bc -l) )); then
     echo -e "${DARK_YELLOW}Load average${NC} \t\t\t${RED}[${la}]${NC}"
-elif (( $(echo "${la} > 1.01" | bc) == 1 )); then
+elif (( $(echo "${la} > 1.01" | bc -l) )); then
     echo -e "${DARK_YELLOW}Load average${NC} \t\t\t${YELLOW}[${la}]${NC}"
 else
     echo -e "${WHITE}Load average${NC} \t\t\t${GREEN}[${la}]${NC}"
