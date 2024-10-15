@@ -44,24 +44,20 @@ fi
 if ! type bc &>/dev/null; then
     bc() {
         echo "alternate bc runned" >&2
+        local input
         local num1
         local operator
         local num2
         local int_part1
         local int_part2
 
+        # Читаем входные данные из стандартного ввода
+        read -r input
 
-        echo "1:${1} 2:${2} 3:${3} 4:${4} 5:${5}" >&2
-
-        # Если первый аргумент -l, убираем его и смещаем остальные аргументы
-        if [[ "$1" == "-l" ]]; then
-            shift
-        fi
-
-        # Разбор входных данных
-        num1="$1"
-        operator="$2"
-        num2="$3"
+        # Разбираем входные данные
+        num1=$(echo "$input" | awk '{print $1}')
+        operator=$(echo "$input" | awk '{print $2}')
+        num2=$(echo "$input" | awk '{print $3}')
 
         # Проверка на пустые значения
         if [[ -z "$num1" || -z "$operator" || -z "$num2" ]]; then
@@ -73,10 +69,6 @@ if ! type bc &>/dev/null; then
         # Получение целых частей
         int_part1=${num1%%.*}
         int_part2=${num2%%.*}
-
-        # Вывод отладочной информации
-        echo "Parsed values: num1=$num1, operator=$operator, num2=$num2" >&2
-        echo "Integer parts: int_part1=$int_part1, int_part2=$int_part2" >&2
 
         # Выполнение сравнения
         case "$operator" in
@@ -302,13 +294,15 @@ echo ""
 
 # LA
 la="$(uptime | awk -F 'load average: ' '{print $2}' | awk '{print $1}'|sed -E 's#,$##'|sed -E 's#,#.#')"
-if (( $(echo "${la} > 2.01" | bc -l) )); then
+
+if (( $(bc -l <<< "${la} > 2.01") )); then
     echo -e "${DARK_YELLOW}Load average${NC} \t\t\t${RED}[${la}]${NC}"
-elif (( $(echo "${la} > 1.01" | bc -l) )); then
+elif (( $(bc -l <<< "${la} > 1.01") )); then
     echo -e "${DARK_YELLOW}Load average${NC} \t\t\t${YELLOW}[${la}]${NC}"
 else
     echo -e "${WHITE}Load average${NC} \t\t\t${GREEN}[${la}]${NC}"
 fi
+
 
 # Disk space and inodes
 df_output=$(df -h --exclude-type=squashfs --exclude-type=tmpfs --exclude-type=devtmpfs | grep -vE "/var/lib/docker")
