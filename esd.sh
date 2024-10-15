@@ -74,7 +74,7 @@ if ! type bc &>/dev/null; then
                 [[ $int_part1 -ne $int_part2 ]] && echo 1 || echo 0
                 ;;
             *)
-                echo "0";  echo "alternante bc is 0" >&2
+                echo "0";  echo "alternante bc is 0, num1 is ${num1}, num2 is ${num2}" >&2
                 ;;
         esac
     }
