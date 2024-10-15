@@ -54,29 +54,29 @@ if ! type bc &>/dev/null; then
         num2=$(echo "$input" | awk '{print $3}')
         int_part1=${num1%%.*}
         int_part2=${num2%%.*}
-case "$operator" in
-    ">")
-        [[ $int_part1 -gt $int_part2 ]] && return 0 || return 1
-        ;;
-    "<")
-        [[ $int_part1 -lt $int_part2 ]] && return 0 || return 1
-        ;;
-    "==")
-        [[ $int_part1 -eq $int_part2 ]] && return 0 || return 1
-        ;;
-    ">=")
-        [[ $int_part1 -ge $int_part2 ]] && return 0 || return 1
-        ;;
-    "<=")
-        [[ $int_part1 -le $int_part2 ]] && return 0 || return 1
-        ;;
-    "!=")
-        [[ $int_part1 -ne $int_part2 ]] && return 0 || return 1
-        ;;
-    *)
-        return 1 # Неизвестная операция
-        ;;
-esac
+        case "$operator" in
+            ">")
+                [[ $int_part1 -gt $int_part2 ]] && echo 1 || echo 0
+                ;;
+            "<")
+                [[ $int_part1 -lt $int_part2 ]] && echo 1 || echo 0
+                ;;
+            "==")
+                [[ $int_part1 -eq $int_part2 ]] && echo 1 || echo 0
+                ;;
+            ">=")
+                [[ $int_part1 -ge $int_part2 ]] && echo 1 || echo 0
+                ;;
+            "<=")
+                [[ $int_part1 -le $int_part2 ]] && echo 1 || echo 0
+                ;;
+            "!=")
+                [[ $int_part1 -ne $int_part2 ]] && echo 1 || echo 0
+                ;;
+            *)
+                echo "0";  echo "alternante bc is 0" >&2
+                ;;
+        esac
     }
 fi
 
