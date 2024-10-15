@@ -49,9 +49,9 @@ if ! type bc &>/dev/null; then
         local num2;
         local int_part1;
         local int_part2;
-        num1=$(echo "$input" | awk '{print $1}')
-        operator=$(echo "$input" | awk '{print $2}')
-        num2=$(echo "$input" | awk '{print $3}')
+        num1=$(echo "$input" | awk '{print $2}')
+        operator=$(echo "$input" | awk '{print $3}')
+        num2=$(echo "$input" | awk '{print $4}')
         int_part1=${num1%%.*}
         int_part2=${num2%%.*}
         case "$operator" in
