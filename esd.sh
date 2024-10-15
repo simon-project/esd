@@ -42,6 +42,7 @@ fi
 # No bc
 if ! type bc &>/dev/null; then
     bc() {
+    echo "alternante bc runned" >&2
         local input="$1"
         local num1;
         local operator;
