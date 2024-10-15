@@ -1020,6 +1020,7 @@ strip_log() {
         s/^[ \t]*\[[0-9TZ:\-]{20,}\] (.+)/\1/
         s/^.+(Failed[ \t]{1,7}to[ \t]{1,7}canonicalize[ \t]{1,7}path).+Permission[ \t]{1,7}denied.*/\1/
         s/^.+:[ \t]{1,7}(\[[^]]{32,}\]).*/\1/
+        s/^.+(\[Warning\][ \t]{1,7}Aborted[ \t]{1,7}connection).+/\1/
     '
 }
 
