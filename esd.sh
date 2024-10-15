@@ -284,9 +284,9 @@ echo ""
 # LA
 la="$(uptime | awk -F 'load average: ' '{print $2}' | awk '{print $1}'|sed -E 's#,$##'|sed -E 's#,#.#')"
 
-if (( $(bc -l <<< "${la} > 2.01") )); then
+if (( $(bc -l <<< "${la} > 8.01") )); then
     echo -e "${DARK_YELLOW}Load average${NC} \t\t\t${RED}[${la}]${NC}"
-elif (( $(bc -l <<< "${la} > 1.01") )); then
+elif (( $(bc -l <<< "${la} > 4.01") )); then
     echo -e "${DARK_YELLOW}Load average${NC} \t\t\t${YELLOW}[${la}]${NC}"
 else
     echo -e "${WHITE}Load average${NC} \t\t\t${GREEN}[${la}]${NC}"
