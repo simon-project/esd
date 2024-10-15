@@ -44,15 +44,17 @@ fi
 if ! type bc &>/dev/null; then
     bc() {
         echo "alternate bc runned" >&2
-        local input="$1"
+        local input="$@"
         local num1
         local operator
         local num2
         local int_part1
         local int_part2
 
-        # Убираем флаг -l, если он присутствует
-        input=$(echo "$input" | sed 's/^-l //')
+        # Если первый аргумент -l, убираем его
+        if [[ "$1" == "-l" ]]; then
+            input="${@:2}"
+        fi
 
         # Разбор входных данных
         num1=$(echo "$input" | awk '{print $1}')
@@ -101,6 +103,7 @@ if ! type bc &>/dev/null; then
         esac
     }
 fi
+
 
 
 
