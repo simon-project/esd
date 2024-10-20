@@ -684,7 +684,7 @@ check_lastlogs() {
             local file_size
             local file_size_mb
             file_size=$(stat -c%s "$file")  # Get file size in bytes
-            file_size_mb=$(echo "scale=2; $file_size / 1024 / 1024" | bc)
+            file_size_mb=$(bc <<< "scale=2; $file_size / 1024 / 1024")
             if [[ $file_size_mb == .* ]]; then
                 file_size_mb="0$file_size_mb"
             fi
