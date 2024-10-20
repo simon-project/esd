@@ -688,7 +688,7 @@ check_lastlogs() {
             if [[ $file_size_mb == .* ]]; then
                 file_size_mb="0$file_size_mb"
             fi
-            if (( $(echo "$file_size > $size_limit_bytes" | bc) )); then
+            if (( $(bc <<< "$file_size > $size_limit_bytes") )); then
                 echo -e "    ${DARK_YELLOW}${file_size_mb}M${NC} \t ${file}"
             fi
         fi
