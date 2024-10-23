@@ -49,6 +49,7 @@ fi
 if ! type bc &>/dev/null; then
     bc() {
         local input
+        local scale=0
         local num1
         local operator
         local num2
@@ -57,45 +58,76 @@ if ! type bc &>/dev/null; then
 
         read -r input
 
+        # Проверка на наличие scale
+        if [[ "$input" =~ scale=([0-9]+); ]]; then
+            scale="${BASH_REMATCH[1]}"
+            input="${input#scale=$scale;}"
+        fi
+
         num1=$(echo "$input" | awk '{print $1}')
         operator=$(echo "$input" | awk '{print $2}')
         num2=$(echo "$input" | awk '{print $3}')
+
         if [[ "$debug" -ne "0" ]]; then
-            echo -e "alt bc: num1: [${num1}] operator: [${operator}] num2: [${num2}] var4: [${4}]" >&2;
+            echo -e "alt bc: scale: [${scale}] num1: [${num1}] operator: [${operator}] num2: [${num2}]" >&2
         fi
+
+        # Если не удалось разобрать операнды или оператор, возвращаем 0
         if [[ -z "$num1" || -z "$operator" || -z "$num2" ]]; then
             echo "0"
             return
         fi
 
+        # Преобразуем числа к целым, если они дробные
         int_part1=${num1%%.*}
         int_part2=${num2%%.*}
 
         case "$operator" in
+            "+")
+                result=$((int_part1 + int_part2))
+                ;;
+            "-")
+                result=$((int_part1 - int_part2))
+                ;;
+            "*")
+                result=$((int_part1 * int_part2))
+                ;;
+            "/")
+                if [[ "$int_part2" -eq 0 ]]; then
+                    echo "division by zero"
+                    return
+                fi
+                # Рассчитываем результат с учетом scale
+                result=$(awk "BEGIN { printf \"%.${scale}f\", $num1 / $num2 }")
+                ;;
             ">")
-                [[ $int_part1 -gt $int_part2 ]] && echo 1 || echo 0
+                [[ $int_part1 -gt $int_part2 ]] && result=1 || result=0
                 ;;
             "<")
-                [[ $int_part1 -lt $int_part2 ]] && echo 1 || echo 0
+                [[ $int_part1 -lt $int_part2 ]] && result=1 || result=0
                 ;;
             "==")
-                [[ $int_part1 -eq $int_part2 ]] && echo 1 || echo 0
+                [[ $int_part1 -eq $int_part2 ]] && result=1 || result=0
                 ;;
             ">=")
-                [[ $int_part1 -ge $int_part2 ]] && echo 1 || echo 0
+                [[ $int_part1 -ge $int_part2 ]] && result=1 || result=0
                 ;;
             "<=")
-                [[ $int_part1 -le $int_part2 ]] && echo 1 || echo 0
+                [[ $int_part1 -le $int_part2 ]] && result=1 || result=0
                 ;;
             "!=")
-                [[ $int_part1 -ne $int_part2 ]] && echo 1 || echo 0
+                [[ $int_part1 -ne $int_part2 ]] && result=1 || result=0
                 ;;
             *)
                 echo "0"
+                return
                 ;;
         esac
+
+        echo "$result"
     }
 fi
+
 
 # Detect OS
 os_name=$(grep -E "^NAME=" /etc/*release* | cut -d'=' -f2 | tr -d '"')
