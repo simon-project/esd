@@ -39,6 +39,11 @@ if [[ "${SMARTCTL_DEBUG}" =~ ^[0-9]+$ ]]; then
 else
     export debug_smartctl="0"
 fi
+if [[ "${DEBUG}" =~ ^[0-9]+$ ]]; then
+    export debug="${DEBUG}"
+else
+    export debug="0"
+fi
 
 # No bc
 if ! type bc &>/dev/null; then
@@ -55,7 +60,9 @@ if ! type bc &>/dev/null; then
         num1=$(echo "$input" | awk '{print $1}')
         operator=$(echo "$input" | awk '{print $2}')
         num2=$(echo "$input" | awk '{print $3}')
-
+        if [[ "$debug" -ne "0" ]]; then
+            echo -e "alt bc: num1: [${num1}] operator: [${operator}] num2: [${num2}]" >&2;
+        fi
         if [[ -z "$num1" || -z "$operator" || -z "$num2" ]]; then
             echo "0"
             return
