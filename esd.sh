@@ -61,7 +61,7 @@ if ! type bc &>/dev/null; then
         operator=$(echo "$input" | awk '{print $2}')
         num2=$(echo "$input" | awk '{print $3}')
         if [[ "$debug" -ne "0" ]]; then
-            echo -e "alt bc: num1: [${num1}] operator: [${operator}] num2: [${num2}]" >&2;
+            echo -e "alt bc: num1: [${num1}] operator: [${operator}] num2: [${num2}] var4: [${4}]" >&2;
         fi
         if [[ -z "$num1" || -z "$operator" || -z "$num2" ]]; then
             echo "0"
