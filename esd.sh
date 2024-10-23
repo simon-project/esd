@@ -53,15 +53,13 @@ if ! type bc &>/dev/null; then
         local num1
         local operator
         local num2
-        local int_part1
-        local int_part2
+        local result
 
         read -r input
 
-        # Проверка на наличие scale
-        if [[ "$input" =~ scale=([0-9]+); ]]; then
-            scale="${BASH_REMATCH[1]}"
-            input="${input#scale=$scale;}"
+        if echo "$input" | grep -q "scale=[0-9]\+;"; then
+            scale=$(echo "$input" | awk -F'scale=|;' '{print $2}')
+            input=$(echo "$input" | sed 's/scale=[0-9]\+;//')
         fi
 
         num1=$(echo "$input" | awk '{print $1}')
@@ -72,51 +70,45 @@ if ! type bc &>/dev/null; then
             echo -e "alt bc: scale: [${scale}] num1: [${num1}] operator: [${operator}] num2: [${num2}]" >&2
         fi
 
-        # Если не удалось разобрать операнды или оператор, возвращаем 0
         if [[ -z "$num1" || -z "$operator" || -z "$num2" ]]; then
             echo "0"
             return
         fi
 
-        # Преобразуем числа к целым, если они дробные
-        int_part1=${num1%%.*}
-        int_part2=${num2%%.*}
-
         case "$operator" in
             "+")
-                result=$((int_part1 + int_part2))
+                result=$((num1 + num2))
                 ;;
             "-")
-                result=$((int_part1 - int_part2))
+                result=$((num1 - num2))
                 ;;
             "*")
-                result=$((int_part1 * int_part2))
+                result=$((num1 * num2))
                 ;;
             "/")
-                if [[ "$int_part2" -eq 0 ]]; then
+                if [[ "$num2" -eq 0 ]]; then
                     echo "division by zero"
                     return
                 fi
-                # Рассчитываем результат с учетом scale
                 result=$(awk "BEGIN { printf \"%.${scale}f\", $num1 / $num2 }")
                 ;;
             ">")
-                [[ $int_part1 -gt $int_part2 ]] && result=1 || result=0
+                [[ $num1 -gt $num2 ]] && result=1 || result=0
                 ;;
             "<")
-                [[ $int_part1 -lt $int_part2 ]] && result=1 || result=0
+                [[ $num1 -lt $num2 ]] && result=1 || result=0
                 ;;
             "==")
-                [[ $int_part1 -eq $int_part2 ]] && result=1 || result=0
+                [[ $num1 -eq $num2 ]] && result=1 || result=0
                 ;;
             ">=")
-                [[ $int_part1 -ge $int_part2 ]] && result=1 || result=0
+                [[ $num1 -ge $num2 ]] && result=1 || result=0
                 ;;
             "<=")
-                [[ $int_part1 -le $int_part2 ]] && result=1 || result=0
+                [[ $num1 -le $num2 ]] && result=1 || result=0
                 ;;
             "!=")
-                [[ $int_part1 -ne $int_part2 ]] && result=1 || result=0
+                [[ $num1 -ne $num2 ]] && result=1 || result=0
                 ;;
             *)
                 echo "0"
