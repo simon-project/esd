@@ -63,6 +63,8 @@ if ! type bc &>/dev/null; then
         input=$(echo "$input" | sed 's/ *\([+/*><=!]\{1,2\}\) */ \1 /g')
         local tokens=($input)
 
+        tokens=($(printf "%s\n" "${tokens[@]}" | grep -E '^-?[0-9]+(\.[0-9]+)?$|^[+/*><=!]{1,2}$'))
+
         if (( ${#tokens[@]} < 3 )); then
             echo "Ошибка: недостаточно токенов для выполнения операции" >&2
             return 1
@@ -83,9 +85,6 @@ if ! type bc &>/dev/null; then
                 echo "Ошибка: некорректные операнды [$result] и/или [$operand]" >&2
                 return 1
             fi
-
-            result=${result%%.*}
-            operand=${operand%%.*}
 
             if [[ "$debug" -ne "0" ]]; then
                 echo -e "alt bc: scale: [${scale}] result: [${result}] operator: [${operator}] operand: [${operand}]" >&2
