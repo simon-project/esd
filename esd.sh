@@ -63,14 +63,14 @@ if ! type bc &>/dev/null; then
         input=$(echo "$input" | sed 's/ *\([+/*><=!]\{1,2\}\) */ \1 /g')
         local tokens=($input)
 
-        tokens=($(printf "%s\n" "${tokens[@]}" | grep -E '^-?[0-9]+(\.[0-9]+)?$|^[+/*><=!]{1,2}$'))
-
+        if (( ${#tokens[@]} < 3 )); then
             echo "Ошибка: недостаточно токенов для выполнения операции" >&2
             return 1
         fi
 
         result=${tokens[0]}
         local i=1
+        while [[ $i -lt ${#tokens[@]} ]]; do
             local operator=${tokens[i]}
             local operand=${tokens[i+1]}
 
@@ -130,12 +130,15 @@ if ! type bc &>/dev/null; then
             esac
 
             i=$((i + 2))
+
+            if (( i >= ${#tokens[@]} )); then
+                break
+            fi
         done
 
         echo "$result"
     }
 fi
-
 
 
 
