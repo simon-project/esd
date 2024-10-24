@@ -65,14 +65,12 @@ if ! type bc &>/dev/null; then
 
         tokens=($(printf "%s\n" "${tokens[@]}" | grep -E '^-?[0-9]+(\.[0-9]+)?$|^[+/*><=!]{1,2}$'))
 
-        if (( ${#tokens[@]} < 3 )); then
             echo "Ошибка: недостаточно токенов для выполнения операции" >&2
             return 1
         fi
 
         result=${tokens[0]}
         local i=1
-        while [[ $i -lt ${#tokens[@]} ]]; do
             local operator=${tokens[i]}
             local operand=${tokens[i+1]}
 
