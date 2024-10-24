@@ -84,44 +84,47 @@ if ! type bc &>/dev/null; then
                 return 1
             fi
 
+            result=${result%%.*}
+            operand=${operand%%.*}
+
             if [[ "$debug" -ne "0" ]]; then
                 echo -e "alt bc: scale: [${scale}] result: [${result}] operator: [${operator}] operand: [${operand}]" >&2
             fi
 
             case "$operator" in
                 "+")
-                    result=$(echo "scale=$scale; $result + $operand" | bc)
+                    result=$((result + operand))
                     ;;
                 "-")
-                    result=$(echo "scale=$scale; $result - $operand" | bc)
+                    result=$((result - operand))
                     ;;
                 "*")
-                    result=$(echo "scale=$scale; $result * $operand" | bc)
+                    result=$((result * operand))
                     ;;
                 "/")
-                    if (( $(echo "$operand == 0" | bc) )); then
+                    if [[ "$operand" -eq 0 ]]; then
                         echo "Ошибка: деление на ноль" >&2
                         return 1
                     fi
-                    result=$(echo "scale=$scale; $result / $operand" | bc)
+                    result=$((result / operand))
                     ;;
                 ">")
-                    result=$(echo "$result > $operand" | bc)
+                    [[ $result -gt $operand ]] && result=1 || result=0
                     ;;
                 "<")
-                    result=$(echo "$result < $operand" | bc)
+                    [[ $result -lt $operand ]] && result=1 || result=0
                     ;;
                 "==")
-                    result=$(echo "$result == $operand" | bc)
+                    [[ $result -eq $operand ]] && result=1 || result=0
                     ;;
                 ">=")
-                    result=$(echo "$result >= $operand" | bc)
+                    [[ $result -ge $operand ]] && result=1 || result=0
                     ;;
                 "<=")
-                    result=$(echo "$result <= $operand" | bc)
+                    [[ $result -le $operand ]] && result=1 || result=0
                     ;;
                 "!=")
-                    result=$(echo "$result != $operand" | bc)
+                    [[ $result -ne $operand ]] && result=1 || result=0
                     ;;
                 *)
                     echo "Ошибка: неизвестный оператор [$operator]" >&2
@@ -130,17 +133,11 @@ if ! type bc &>/dev/null; then
             esac
 
             i=$((i + 2))
-
-            if (( i >= ${#tokens[@]} )); then
-                break
-            fi
         done
 
         echo "$result"
     }
 fi
-
-
 
 
 # Detect OS
