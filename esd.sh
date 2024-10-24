@@ -92,38 +92,38 @@ if ! type bc &>/dev/null; then
 
             case "$operator" in
                 "+")
-                    result=$((result + operand))
+                    result=$(echo "scale=$scale; $result + $operand" | bc)
                     ;;
                 "-")
-                    result=$((result - operand))
+                    result=$(echo "scale=$scale; $result - $operand" | bc)
                     ;;
                 "*")
-                    result=$((result * operand))
+                    result=$(echo "scale=$scale; $result * $operand" | bc)
                     ;;
                 "/")
-                    if [[ "$operand" -eq 0 ]]; then
+                    if (( $(echo "$operand == 0" | bc) )); then
                         echo "Ошибка: деление на ноль" >&2
                         return 1
                     fi
-                    result=$((result / operand))
+                    result=$(echo "scale=$scale; $result / $operand" | bc)
                     ;;
                 ">")
-                    [[ $result -gt $operand ]] && result=1 || result=0
+                    result=$(echo "$result > $operand" | bc)
                     ;;
                 "<")
-                    [[ $result -lt $operand ]] && result=1 || result=0
+                    result=$(echo "$result < $operand" | bc)
                     ;;
                 "==")
-                    [[ $result -eq $operand ]] && result=1 || result=0
+                    result=$(echo "$result == $operand" | bc)
                     ;;
                 ">=")
-                    [[ $result -ge $operand ]] && result=1 || result=0
+                    result=$(echo "$result >= $operand" | bc)
                     ;;
                 "<=")
-                    [[ $result -le $operand ]] && result=1 || result=0
+                    result=$(echo "$result <= $operand" | bc)
                     ;;
                 "!=")
-                    [[ $result -ne $operand ]] && result=1 || result=0
+                    result=$(echo "$result != $operand" | bc)
                     ;;
                 *)
                     echo "Ошибка: неизвестный оператор [$operator]" >&2
@@ -137,6 +137,7 @@ if ! type bc &>/dev/null; then
         echo "$result"
     }
 fi
+
 
 
 
