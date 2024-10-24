@@ -141,6 +141,7 @@ fi
 
 
 
+
 # Detect OS
 os_name=$(grep -E "^NAME=" /etc/*release* | cut -d'=' -f2 | tr -d '"')
 os_version=$(grep -E "^VERSION_ID=" /etc/*release* | cut -d'=' -f2 | tr -d '"')
