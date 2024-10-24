@@ -46,7 +46,6 @@ else
 fi
 
 # No bc
-
 if ! type bc &>/dev/null; then
     bc() {
         local input
@@ -70,6 +69,9 @@ if ! type bc &>/dev/null; then
             local operator=${tokens[i]}
             local operand=${tokens[i+1]}
 
+            result=${result%%.*}
+            operand=${operand%%.*}
+
             if [[ "$debug" -ne "0" ]]; then
                 echo -e "alt bc: scale: [${scale}] result: [${result}] operator: [${operator}] operand: [${operand}]" >&2
             fi
@@ -89,7 +91,7 @@ if ! type bc &>/dev/null; then
                         echo "division by zero"
                         return
                     fi
-                    result=$(awk "BEGIN { printf \"%.${scale}f\", $result / $operand }")
+                    result=$((result / operand))
                     ;;
                 ">")
                     [[ $result -gt $operand ]] && result=1 || result=0
