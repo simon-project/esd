@@ -46,14 +46,13 @@ else
 fi
 
 # No bc
+
 if ! type bc &>/dev/null; then
     bc() {
         local input
         local scale=0
-        local num1
-        local operator
-        local num2
         local result
+        local debug=${debug:-0}
 
         read -r input
 
@@ -62,63 +61,67 @@ if ! type bc &>/dev/null; then
             input=$(echo "$input" | sed 's/scale=[0-9]\+;//')
         fi
 
-        num1=$(echo "$input" | awk '{print $1}')
-        operator=$(echo "$input" | awk '{print $2}')
-        num2=$(echo "$input" | awk '{print $3}')
+        input=$(echo "$input" | sed 's/ *\([+/*><=!]\{1,2\}\) */ \1 /g')
+        local tokens=($input)
 
-        if [[ "$debug" -ne "0" ]]; then
-            echo -e "alt bc: scale: [${scale}] num1: [${num1}] operator: [${operator}] num2: [${num2}]" >&2
-        fi
+        result=${tokens[0]}
+        local i=1
+        while [[ $i -lt ${#tokens[@]} ]]; do
+            local operator=${tokens[i]}
+            local operand=${tokens[i+1]}
 
-        if [[ -z "$num1" || -z "$operator" || -z "$num2" ]]; then
-            echo "0"
-            return
-        fi
+            if [[ "$debug" -ne "0" ]]; then
+                echo -e "alt bc: scale: [${scale}] result: [${result}] operator: [${operator}] operand: [${operand}]" >&2
+            fi
 
-        case "$operator" in
-            "+")
-                result=$((num1 + num2))
-                ;;
-            "-")
-                result=$((num1 - num2))
-                ;;
-            "*")
-                result=$((num1 * num2))
-                ;;
-            "/")
-                if [[ "$num2" -eq 0 ]]; then
-                    echo "division by zero"
+            case "$operator" in
+                "+")
+                    result=$((result + operand))
+                    ;;
+                "-")
+                    result=$((result - operand))
+                    ;;
+                "*")
+                    result=$((result * operand))
+                    ;;
+                "/")
+                    if [[ "$operand" -eq 0 ]]; then
+                        echo "division by zero"
+                        return
+                    fi
+                    result=$(awk "BEGIN { printf \"%.${scale}f\", $result / $operand }")
+                    ;;
+                ">")
+                    [[ $result -gt $operand ]] && result=1 || result=0
+                    ;;
+                "<")
+                    [[ $result -lt $operand ]] && result=1 || result=0
+                    ;;
+                "==")
+                    [[ $result -eq $operand ]] && result=1 || result=0
+                    ;;
+                ">=")
+                    [[ $result -ge $operand ]] && result=1 || result=0
+                    ;;
+                "<=")
+                    [[ $result -le $operand ]] && result=1 || result=0
+                    ;;
+                "!=")
+                    [[ $result -ne $operand ]] && result=1 || result=0
+                    ;;
+                *)
+                    echo "0"
                     return
-                fi
-                result=$(awk "BEGIN { printf \"%.${scale}f\", $num1 / $num2 }")
-                ;;
-            ">")
-                [[ $num1 -gt $num2 ]] && result=1 || result=0
-                ;;
-            "<")
-                [[ $num1 -lt $num2 ]] && result=1 || result=0
-                ;;
-            "==")
-                [[ $num1 -eq $num2 ]] && result=1 || result=0
-                ;;
-            ">=")
-                [[ $num1 -ge $num2 ]] && result=1 || result=0
-                ;;
-            "<=")
-                [[ $num1 -le $num2 ]] && result=1 || result=0
-                ;;
-            "!=")
-                [[ $num1 -ne $num2 ]] && result=1 || result=0
-                ;;
-            *)
-                echo "0"
-                return
-                ;;
-        esac
+                    ;;
+            esac
+
+            i=$((i + 2))
+        done
 
         echo "$result"
     }
 fi
+
 
 
 # Detect OS
