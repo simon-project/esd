@@ -69,6 +69,11 @@ if ! type bc &>/dev/null; then
             local operator=${tokens[i]}
             local operand=${tokens[i+1]}
 
+            if ! [[ $result =~ ^-?[0-9]+(\.[0-9]+)?$ ]] || ! [[ $operand =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+                echo "Ошибка: некорректные операнды [$result] и/или [$operand]" >&2
+                return 1
+            fi
+
             result=${result%%.*}
             operand=${operand%%.*}
 
@@ -88,8 +93,8 @@ if ! type bc &>/dev/null; then
                     ;;
                 "/")
                     if [[ "$operand" -eq 0 ]]; then
-                        echo "division by zero"
-                        return
+                        echo "Ошибка: деление на ноль" >&2
+                        return 1
                     fi
                     result=$((result / operand))
                     ;;
@@ -113,7 +118,7 @@ if ! type bc &>/dev/null; then
                     ;;
                 *)
                     echo "0"
-                    return
+                    return 1
                     ;;
             esac
 
