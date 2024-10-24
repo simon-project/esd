@@ -64,7 +64,9 @@ if ! type bc &>/dev/null; then
         local tokens=($input)
 
         if (( ${#tokens[@]} < 3 )); then
-            echo "Ошибка: недостаточно токенов для выполнения операции" >&2
+            if [[ "$debug" -ne "0" ]]; then
+                echo "Ошибка: недостаточно токенов для выполнения операции" >&2
+            fi
             return 1
         fi
 
@@ -75,12 +77,16 @@ if ! type bc &>/dev/null; then
             local operand=${tokens[i+1]}
 
             if [[ -z "$operator" || -z "$operand" ]]; then
-                echo "Ошибка: отсутствует оператор или операнд" >&2
+                if [[ "$debug" -ne "0" ]]; then
+                    echo "Ошибка: отсутствует оператор или операнд" >&2
+                fi
                 return 1
             fi
 
             if ! [[ $result =~ ^-?[0-9]+(\.[0-9]+)?$ ]] || ! [[ $operand =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
-                echo "Ошибка: некорректные операнды [$result] и/или [$operand]" >&2
+                if [[ "$debug" -ne "0" ]]; then
+                    echo "Ошибка: некорректные операнды [$result] и/или [$operand]" >&2
+                fi
                 return 1
             fi
 
@@ -103,7 +109,9 @@ if ! type bc &>/dev/null; then
                     ;;
                 "/")
                     if [[ "$operand" -eq 0 ]]; then
-                        echo "Ошибка: деление на ноль" >&2
+                        if [[ "$debug" -ne "0" ]]; then
+                            echo "Ошибка: деление на ноль" >&2
+                        fi
                         return 1
                     fi
                     result=$((result / operand))
@@ -127,7 +135,9 @@ if ! type bc &>/dev/null; then
                     [[ $result -ne $operand ]] && result=1 || result=0
                     ;;
                 *)
-                    echo "Ошибка: неизвестный оператор [$operator]" >&2
+                    if [[ "$debug" -ne "0" ]]; then
+                        echo "Ошибка: неизвестный оператор [$operator]" >&2
+                    fi
                     return 1
                     ;;
             esac
