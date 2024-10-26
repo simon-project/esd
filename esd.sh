@@ -389,7 +389,7 @@ echo "$df_inodes_output" | tail -n +2 | while read -r line; do
     check_usage "$line"
 done
 
-if echo "$df_inodes_output" | awk '{print $5}' | sed 's/%//' | grep -qE '^9[0-9]+'; then
+if ! echo "$df_inodes_output" | tail -n +2 | awk '{print $5}' | sed 's/%//' | grep -qE '^9[0-9]+'; then
     echo -e "Disk Inodes \t\t\t${GREEN}[OK]${NC}"
 fi
 
