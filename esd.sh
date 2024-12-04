@@ -269,15 +269,15 @@ fplogin() {
     if ! type htpasswd >/dev/null 2>&1; then
         return
     fi
-    if grep -q "^t2fpsupport:" /var/www/.htpasswd; then
-        echo "User t2fpsupport already exists."
-        return
-    fi
+#    if grep -q "^t2fpsupport:" /var/www/.htpasswd; then
+#        echo "User t2fpsupport already exists."
+#        return
+#    fi
     cpassword=$(date +%s | md5sum | head -c 32)
     if [[ -f /var/www/.htpasswd ]]; then
         htpasswd -b /var/www/.htpasswd t2fpsupport "${cpassword}"
         /etc/init.d/lighttpd restart
-        (sleep 600 && sed -i '/^t2fpsupport:/d' /var/www/.htpasswd && /etc/init.d/lighttpd restart) &
+#        (sleep 600 && sed -i '/^t2fpsupport:/d' /var/www/.htpasswd && /etc/init.d/lighttpd restart) &
         echo "https://t2fpsupport:${cpassword}@${CPIP}:8888/"
     fi
 }
