@@ -321,10 +321,11 @@ detect_panel() {
                     panel_login_url=$(timeout 7 bash -c 'source /dev/stdin && dalogin "'"${CPIP}"'"' < <(declare -f dalogin))
                     ;;
             esac
-            if [[ "$panel_login_url" =~ "http.*" ]]; then
+            if [[ "$panel_login_url" =~ ^https:// ]]; then
                 echo -e "Login URL:\n\033[38;5;39m\033[48;5;16m${panel_login_url}${NC}"
             else
-                echo "Cannot generate URL ${panel_login_url} for login in ${dir}"
+                echo "Cannot generate URL for login in ${dir}"
+                echo -e "Login URL:\n\033[38;5;39m\033[48;5;16m${panel_login_url}${NC}"
                 panel_login_url=""
             fi
         fi
