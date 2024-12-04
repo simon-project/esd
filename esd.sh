@@ -324,7 +324,7 @@ detect_panel() {
             if [[ "$panel_login_url" =~ "http.*" ]]; then
                 echo -e "Login URL:\n\033[38;5;39m\033[48;5;16m${panel_login_url}${NC}"
             else
-                echo "Cannot generate URL for login in ${dir}"
+                echo "Cannot generate URL ${panel_login_url} for login in ${dir}"
                 panel_login_url=""
             fi
         fi
